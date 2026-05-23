@@ -138,20 +138,31 @@ taskset -c 0-31 torchrun --standalone --nproc_per_node=8 pretrain.py \
   arch/size@arch=XL \
   data.path=/home/work/.data/hrm_text_prepared/koterm_hrm_cleaned_fastcap_stage1_v1 \
   resume_from=/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage0b-debug-launch2 \
-  +checkpoint_path=/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs262 \
+  +checkpoint_path=/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs229 \
   +project_name=KoHRM-Text \
-  +run_name=KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs262 \
+  +run_name=KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs229 \
   epochs=1 \
-  global_batch_size=262144 \
+  global_batch_size=229376 \
   lr_warmup_steps=2000 \
   resume_step_offset=7765 \
-  total_steps_override=63300 \
+  total_steps_override=71220 \
   checkpoint_interval=1
 ```
 
-stage-1은 `global_batch_size=262144`로 H200 VRAM을 더 적극적으로 사용합니다. 관측값은 GPU0 약 118GB, 나머지 약 116GB VRAM, 8장 모두 99% utilization입니다. 안정 속도는 약 `1.09-1.10 sec/step`, 즉 약 238k-240k tokens/sec입니다.
+`global_batch_size=262144`는 초반에는 동작했지만, 후속 compile graph에서 `32768 x 131072` bf16 logits buffer 추가 할당이 필요해 OOM이 발생했습니다. 현재 stage-1은 `global_batch_size=229376`으로 재시작해 정상 진행 중입니다.
 
-stage0b checkpoint는 HF `LLM-OS-Models/KoHRM-Text-1.4B`에 raw FSDP2 artifact로 업로드 완료했습니다.
+현재 stage-1 관측값:
+
+| 항목 | 값 |
+|---|---:|
+| global batch | 229,376 tokens |
+| local token slots/GPU | 28,672 |
+| VRAM | GPU0 약 105GB, 나머지 약 103GB |
+| GPU utilization | 8장 모두 99% |
+| 속도 | 약 1.02-1.03 step/sec |
+| ETA | 약 17시간 |
+
+stage0b checkpoint는 HF `LLM-OS-Models/KoHRM-Text-1.4B`에 `model.safetensors` 안전 포맷으로 변환해 업로드했습니다. HF unsafe scan 경고를 만들던 raw `.distcp`/`.metadata` 파일은 메인 repo에서 삭제했습니다. raw FSDP2 checkpoint는 optimizer/EMA resume 용도이므로 별도 raw checkpoint repo로 분리합니다.
 
 ## 로컬 데이터 주의
 
@@ -169,7 +180,8 @@ stage0b checkpoint는 HF `LLM-OS-Models/KoHRM-Text-1.4B`에 raw FSDP2 artifact�
 
 ## 다음 작업
 
-1. 현재 stage-1 학습을 완료하고 raw FSDP2 checkpoint를 HF에 epoch 단위 업로드합니다.
-2. local terminal dataset `swe/math/code.parquet`를 V1Dataset으로 변환해 stage-2에 추가합니다.
-3. full training용 45B~52B token mix를 확정한 뒤 장기 pretraining을 이어갑니다.
-4. 최종 checkpoint를 선택하면 `conversion/convert_to_hf.py`로 model-only artifact를 따로 변환합니다.
+1. 현재 stage-1 학습을 완료하고 checkpoint를 저장합니다.
+2. 메인 HF repo에는 `safetensors` 변환본을 올리고, raw FSDP2 checkpoint는 별도 raw checkpoint repo에 올립니다.
+3. local terminal dataset `swe/math/code.parquet`를 V1Dataset으로 변환해 stage-2에 추가합니다.
+4. full training용 45B~52B token mix를 확정한 뒤 장기 pretraining을 이어갑니다.
+5. 최종 checkpoint를 선택하면 `conversion/convert_to_hf.py`로 model-only artifact를 따로 변환합니다.

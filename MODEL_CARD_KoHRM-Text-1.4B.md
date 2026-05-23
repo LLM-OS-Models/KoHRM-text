@@ -17,7 +17,7 @@ pipeline_tag: text-generation
 
 `KoHRM-Text-1.4B`는 `sapientinc/HRM-Text`의 PrefixLM 학습 구조를 기반으로, 한국어/영어/코딩/터미널/툴콜 사용성을 목표로 scratch pretraining하는 모델입니다.
 
-이 카드는 2026-05-23 기준 작업 중인 모델 카드 초안입니다. 현재 업로드되는 epoch artifact는 raw HRM-Text FSDP2 checkpoint이며, 바로 Transformers에서 로드하는 최종 배포 형식이 아닙니다.
+이 카드는 2026-05-23 기준 작업 중인 모델 카드 초안입니다. 현재 메인 artifact는 stage0b checkpoint를 변환한 `model.safetensors` 안전 포맷입니다. raw HRM-Text FSDP2 checkpoint는 optimizer/EMA resume 용도이므로 메인 repo에서 제거하고 별도 raw checkpoint repo로 분리합니다.
 
 ## 모델 정보
 
@@ -69,17 +69,18 @@ stage-0/stage0b 입력은 전처리 완료된 711.3M token mix입니다.
 - Optimizer: HRM-Text upstream Adam-atan2
 - Context: 4096 tokens
 - Hardware: 8 x NVIDIA H200
-- Current stage-1 global batch: 262,144 tokens
-- Checkpoint policy: epoch-level raw FSDP2 checkpoint upload
+- Current stage-1 global batch: 229,376 tokens
+- Checkpoint policy: main repo에는 `safetensors`, raw FSDP2는 별도 raw checkpoint repo
 
-stage-1은 8 x H200에서 `global_batch_size=262144`로 실행 중이며, 관측 VRAM은 GPU0 약 118GB, 나머지 약 116GB입니다. 안정 속도는 약 `1.09-1.10 sec/step`, 약 238k-240k tokens/sec입니다. 문제가 생기면 `196608` batch로 되돌려 resume합니다.
+stage-1은 처음 `global_batch_size=262144`로 시도했지만, 후속 compile graph에서 `32768 x 131072` bf16 logits buffer 추가 할당이 필요해 OOM이 발생했습니다. 현재는 `global_batch_size=229376`으로 재시작해 진행 중이며, 관측 VRAM은 GPU0 약 105GB, 나머지 약 103GB입니다. 안정 속도는 약 `1.02-1.03 step/sec`입니다.
 
 Staged pretraining에서는 checkpoint의 model/optimizer/EMA/carry를 이어받고, `resume_step_offset`과 `total_steps_override`로 LR schedule을 전체 pretraining 기준에 맞춥니다. 즉, 새 데이터가 준비될 때마다 학습을 재시작하되 optimizer와 schedule을 끊지 않는 방향으로 운용합니다.
 
 ## 현재 상태
 
 - stage-0/stage0b training: complete
-- stage0b HF upload: complete
+- stage0b safetensors HF upload: complete
+- unsafe raw DCP files removed from main HF repo
 - stage-1 HRM fast-cap training: in progress
 - final Transformers conversion: not yet produced
 - public benchmark score: not yet evaluated for this model

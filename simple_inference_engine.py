@@ -34,7 +34,7 @@ class InferenceCheckpoint:
         return self.tokenizer.decode(tokens)  # pyright: ignore[reportReturnType]
 
 
-def inference_load_checkpoint(ckpt_path: str, ckpt_epoch: Optional[int], ckpt_use_ema: bool):
+def inference_load_checkpoint(ckpt_path: str, ckpt_epoch: Optional[int], ckpt_use_ema: bool, device: str = "cuda"):
     # Load Checkpoint
     # Load config
     with open(os.path.join(ckpt_path, "all_config.yaml"), "r") as f:
@@ -45,7 +45,7 @@ def inference_load_checkpoint(ckpt_path: str, ckpt_epoch: Optional[int], ckpt_us
     # Create model
     model_cls = load_model_class(model_cfg.arch.name)
     head_cls = load_model_class(model_cfg.arch.head)
-    with torch.device("cuda"):
+    with torch.device(device):
         combined_cfg = model_cfg.arch.model_dump() | train_metadata.model_dump() | model_cfg.data.model_dump()
 
         model: nn.Module = model_cls(combined_cfg)
@@ -72,7 +72,7 @@ def inference_load_checkpoint(ckpt_path: str, ckpt_epoch: Optional[int], ckpt_us
         checkpoint_id=os.path.join(ckpt_path, f"fsdp2_epoch_{ckpt_epoch}"),
         no_dist=True  # <--- Critical for single rank loading
     )
-    carry = torch.load(os.path.join(ckpt_path, f"carry_epoch_{ckpt_epoch}.0.pt"), map_location="cuda")
+    carry = torch.load(os.path.join(ckpt_path, f"carry_epoch_{ckpt_epoch}.0.pt"), map_location=device)
 
     # Use EMA weights
     if ckpt_use_ema:
@@ -113,7 +113,7 @@ def _batched_decode(model: nn.Module, carry: Carry, inputs: Tensor, cache: Any, 
 
 
 @torch.inference_mode()
-def inference_generate(ckpt: InferenceCheckpoint, iterator: Iterator[tuple[int, tuple[str, str]]], max_tokens: int, max_generation: int, batch_size: int, temp: float = 0.0) -> Generator[tuple[int, str], None]:
+def inference_generate(ckpt: InferenceCheckpoint, iterator: Iterator[tuple[int, tuple[str, str]]], max_tokens: int, max_generation: int, batch_size: int, temp: float = 0.0) -> Generator[tuple[int, str], None, None]:
     def fetch_next():
         for pid, p_tuple in iterator:
             tok = ckpt.tokenize_prompt(*p_tuple)

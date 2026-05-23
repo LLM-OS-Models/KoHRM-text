@@ -36,7 +36,7 @@ def convert_state_dict(state_dict: dict[str, torch.Tensor]) -> tuple[dict[str, t
         if new_key is None:
             skipped.append(key)
         else:
-            out[new_key] = value.contiguous()
+            out[new_key] = value.detach().contiguous().cpu()
     return out, skipped
 
 
@@ -121,10 +121,11 @@ def main():
     parser.add_argument("--ckpt_use_ema", type=parse_bool, default=True)
     parser.add_argument("--out_dir", type=Path, required=True)
     parser.add_argument("--tokenizer_path", type=Path, default=None)
+    parser.add_argument("--device", choices=("cuda", "cpu"), default="cuda")
     args = parser.parse_args()
 
     metadata, cfg = load_config(args.ckpt_path)
-    ckpt = inference_load_checkpoint(str(args.ckpt_path), args.ckpt_epoch, args.ckpt_use_ema)
+    ckpt = inference_load_checkpoint(str(args.ckpt_path), args.ckpt_epoch, args.ckpt_use_ema, device=args.device)
 
     hf_state, dropped = convert_state_dict(ckpt.model.state_dict())
     print(f"[convert] mapped {len(hf_state)} tensors; dropped {len(dropped)}")
