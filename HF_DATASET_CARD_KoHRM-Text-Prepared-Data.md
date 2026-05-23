@@ -112,19 +112,29 @@ Important special tokens:
 | `kowiki_raw_full_v1` | 462.5M | 1.8G | Korean Wikipedia articles converted into training chunks |
 | `hf_extra_reasoning_agent_mm_v1` | 112.6M | 444M | Small prepared subset from extra reasoning/agent/multimodal text sources |
 | `local_terminal_conversations_ctx9k_resp6k_v1` | 9.39B | 36G | Local terminal/code/math conversations converted into HRM-Text training records |
+| `korean_legal_tasks_full_v1` | 629.0M | 2.5G | Uncapped task-style Korean legal/admin data generated from statutes, local ordinances, administrative rules, and precedents |
 
 `smoke_hrm_parquet_v1` is a local smoke-test dataset and is intentionally not part of the main upload unless explicitly needed.
 
 ## Scheduled Follow-Up Uploads
 
-The first public prepared-data upload contains the completed datasets listed above. Two large follow-up additions are scheduled from the KoHRM training machine:
+The first public prepared-data upload contains the completed datasets listed above. The uncapped Korean legal/admin task dataset was uploaded as a follow-up on 2026-05-23 UTC. One large follow-up addition is still scheduled from the KoHRM training machine:
 
 | Folder | Status | Description |
 |---|---|---|
-| `korean_legal_tasks_full_v1` | scheduled/running | Uncapped task-style Korean legal/admin data generated from statutes, local ordinances, administrative rules, and precedents |
 | `koterm_hrm_cleaned_full_nocap_v1` | waiting for tokenizer finish | Full/no-cap retokenized upstream HRM 328G cleaned corpus packed as HRM-Text V1Dataset |
 
-These follow-up uploads use the same KoHRM 131K tokenizer and the same HRM-Text PrefixLM response-only training layout.
+The follow-up uploads use the same KoHRM 131K tokenizer and the same HRM-Text PrefixLM response-only training layout.
+
+## Korean Legal Full Task Upload
+
+The full Korean legal/admin task upload is available in the repository files:
+
+| Path | Description |
+|---|---|
+| `korean_legal_tasks_full_v1/` | Prepared V1Dataset, about 629M tokens and 2.5G on disk |
+| `raw_jsonl/korean_legal_tasks_full_20260524.jsonl` | Raw task JSONL, 1,383,749 rows and about 4.12GB |
+| `LEGAL_FULL_TASKS_README.md` | Source note for the legal/admin full task upload |
 
 ## Source Attribution
 

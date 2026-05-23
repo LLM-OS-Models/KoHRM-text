@@ -80,7 +80,7 @@
 | HF extra reasoning/agent/mm | 전처리 완료 | 112.6M |
 | local terminal `swe/code/math` | 최적화 JSONL + V1Dataset 완료 | 9.39B |
 | HRM cleaned 328G full nocap | 새 tokenizer 재토큰화 거의 완료, V1Dataset 패킹 예약 | 산출 후 산정 |
-| 한국어 법률/조례/행정규칙/판례 task full nocap | 생성/전처리 예약 | 산출 후 산정 |
+| 한국어 법률/조례/행정규칙/판례 task full nocap | 전처리 및 HF 업로드 완료 | 629.0M |
 
 주요 경로:
 
@@ -105,8 +105,8 @@ prepared dataset 공개용 업로드도 병렬로 진행합니다.
 | 항목 | 값 |
 |---|---|
 | HF prepared dataset repo | `https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-prepared-data` |
-| 현재 업로드 | 완료된 V1Dataset 14개와 tokenizer/docs |
-| 후속 업로드 예약 | uncapped 한국어 법률 task full, HRM cleaned 328G full/no-cap V1Dataset |
+| 현재 업로드 | 완료된 V1Dataset 15개와 tokenizer/docs |
+| 후속 업로드 예약 | HRM cleaned 328G full/no-cap V1Dataset |
 
 `koterm_pretrain_mix_v1` 구성:
 
@@ -188,7 +188,7 @@ taskset -c 0-31 torchrun --standalone --nproc_per_node=8 pretrain.py \
 | 속도 | 약 1.02 step/sec |
 | ETA | 약 15~16시간 내외 |
 
-2026-05-24 기준 stage-1은 약 34% 지점까지 정상 진행 중입니다. prepared-data HF 업로드는 대용량 `koterm_hrm_cleaned_fastcap_stage1_v1/tokens.npy` 파일 업로드가 진행 중이며, 후속 전처리 예약 스크립트가 legal full task와 HRM full/no-cap 패킹/업로드를 순서대로 처리합니다.
+2026-05-24 기준 stage-1은 약 36% 지점까지 정상 진행 중입니다. prepared-data HF 초기 업로드와 legal full task 추가 업로드는 완료됐으며, 후속 전처리 예약 스크립트가 HRM full/no-cap 패킹/업로드를 기다리고 있습니다.
 
 stage0b checkpoint는 HF `LLM-OS-Models/KoHRM-Text-1.4B`에 `model.safetensors` 안전 포맷으로 변환해 업로드했습니다. HF unsafe scan 경고를 만들던 raw `.distcp`/`.metadata` 파일은 메인 repo에서 삭제했습니다. raw FSDP2 checkpoint는 optimizer/EMA resume 용도이므로 별도 raw checkpoint repo로 분리합니다.
 
