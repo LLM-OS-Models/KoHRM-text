@@ -113,6 +113,7 @@ Important special tokens:
 | `hf_extra_reasoning_agent_mm_v1` | 112.6M | 444M | Small prepared subset from extra reasoning/agent/multimodal text sources |
 | `local_terminal_conversations_ctx9k_resp6k_v1` | 9.39B | 36G | Local terminal/code/math conversations converted into HRM-Text training records |
 | `korean_legal_tasks_full_v1` | 629.0M | 2.5G | Uncapped task-style Korean legal/admin data generated from statutes, local ordinances, administrative rules, and precedents |
+| `sft_bcai_finance_kor_v1` | 857.7M | 3.3G | Korean finance instruction-response data from BCAI Finance Kor |
 
 `smoke_hrm_parquet_v1` is a local smoke-test dataset and is intentionally not part of the main upload unless explicitly needed.
 
@@ -135,6 +136,9 @@ The full Korean legal/admin task upload is available in the repository files:
 | `korean_legal_tasks_full_v1/` | Prepared V1Dataset, about 629M tokens and 2.5G on disk |
 | `raw_jsonl/korean_legal_tasks_full_20260524.jsonl` | Raw task JSONL, 1,383,749 rows and about 4.12GB |
 | `LEGAL_FULL_TASKS_README.md` | Source note for the legal/admin full task upload |
+| `sft_bcai_finance_kor_v1/` | Prepared V1Dataset, 857,699,372 tokens and about 3.3G on disk |
+| `raw_jsonl/bcai_finance_kor_hrm_20260524.jsonl` | Raw HRM-converted finance JSONL, 1,862,508 rows and about 5.3G |
+| `FINANCE_BCAI_README.md` | Source note for the BCAI finance upload |
 
 ## Source Attribution
 
@@ -156,6 +160,7 @@ Major sources used while constructing these prepared datasets:
 | Open-MM-RL | https://huggingface.co/datasets/TuringEnterprises/Open-MM-RL | Text-only subset review |
 | DeepSeek agent traces | https://huggingface.co/datasets/TeichAI/DeepSeek-v4-Pro-Agent | Limited agent/tool-use subset; license-sensitive |
 | structured Wikipedia | https://huggingface.co/datasets/wikimedia/structured-wikipedia | Tokenizer/general text support |
+| BCAI Finance Kor | https://huggingface.co/datasets/BCCard/BCAI-Finance-Kor-1862K | Korean finance instruction-response data in `sft_bcai_finance_kor_v1` |
 
 Licenses and terms remain those of the original data sources. This upload does not relicense upstream content. Users should verify source licenses before downstream redistribution or commercial use.
 
@@ -168,6 +173,7 @@ These prepared datasets are used in staged pretraining:
 3. Korean raw full, Wikipedia, terminal, SWE, ToolBench, and extra reasoning datasets for later mixed stages.
 4. Full no-cap retokenization of the upstream HRM 328G cleaned corpus is still in progress and will be added as a later dataset when complete.
 5. The uncapped Korean legal/admin task dataset is generated as a follow-up so the raw legal corpus and task-style legal corpus are both available.
+6. BCAI Finance Kor is prepared and uploaded as a Korean finance/domain instruction dataset for the next staged continuation.
 
 SFT-style datasets are also used during pretraining first. A cleaner, more strongly weighted SFT pass is planned after the pretraining continuation.
 

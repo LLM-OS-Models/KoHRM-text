@@ -15,6 +15,7 @@
 | HRM-Text Pre-cleaned | **완료** | `/home/work/.data/huggingface/hub/datasets--sapientinc--HRM-Text-data-io-cleaned-20260515/` | 328G |
 | 한국어 위키백과 | **완료** | `/home/work/.data/huggingface/kowiki-20260501-pages-articles-multistream.xml.bz2`, `/home/work/.data/huggingface/kowiki-20260501-pages-articles-multistream.xml` | 1.3G bz2 / 5.9G xml |
 | ToolBench (data.zip) | **완료** | `/home/work/.projects/LLM-OS-Models/Terminal/HRM-Text/data_toolbench/data/` | 21G |
+| BCAI Finance Kor | **완료** | `/home/work/.data/huggingface/hrm_text_extra/finance/BCAI-Finance-Kor-1862K`, `/home/work/.data/huggingface/hrm_text_extra/finance/bcai_finance_kor_hrm_20260524.jsonl` | 원본 5.2G / HRM JSONL 5.3G |
 
 ## 한국어 데이터
 
@@ -370,12 +371,14 @@ print(f"EN char/token: {len(english_text) / len(enc.tokens):.2f}")  # 3.0+
 | `hf_extra_reasoning_agent_mm_v1` | 112.6M | 444M |
 | `sft_korean_legal_v1` | 83.1M | 336M |
 | `sft_glm_reasoning_v1` | 68.5M | 282M |
+| `sft_bcai_finance_kor_v1` | 857.7M | 3.3G |
 
 진행/예약:
 
 | 항목 | 상태 |
 |---|---|
-| HRM 328G cleaned full/no-cap 재토큰화 | 진행 중, tokenized root 약 387G, metadata 5221개 생성 |
+| HRM 328G cleaned full/no-cap 재토큰화 | 진행 중, tokenized root 600G 이상, metadata 5221개 생성 |
 | HRM full/no-cap V1Dataset 패킹 | 재토큰화 종료 후 `koterm_hrm_cleaned_full_nocap_v1`로 예약 |
-| 한국어 법률/조례/행정규칙/판례 task full nocap | 생성 및 V1Dataset 전처리 예약 |
-| prepared dataset HF 업로드 | 진행 중, 완료 산출물 14개와 tokenizer/docs 업로드 대상 |
+| 한국어 법률/조례/행정규칙/판례 task full nocap | 생성, V1Dataset 전처리, HF 업로드 완료 |
+| BCAI Finance Kor | 다운로드, HRM JSONL 변환, V1Dataset 전처리, HF 업로드 완료 |
+| prepared dataset HF 업로드 | 1차 업로드와 legal/finance 후속 업로드 완료, HRM full/no-cap만 예약 |

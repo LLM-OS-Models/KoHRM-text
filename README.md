@@ -81,6 +81,7 @@
 | local terminal `swe/code/math` | 최적화 JSONL + V1Dataset 완료 | 9.39B |
 | HRM cleaned 328G full nocap | 새 tokenizer 재토큰화 거의 완료, V1Dataset 패킹 예약 | 산출 후 산정 |
 | 한국어 법률/조례/행정규칙/판례 task full nocap | 전처리 및 HF 업로드 완료 | 629.0M |
+| BCAI Finance Korean | 다운로드, HRM 변환, V1Dataset 전처리, HF 업로드 완료 | 857.7M |
 
 주요 경로:
 
@@ -96,6 +97,7 @@
 /home/work/.data/hrm_text_prepared/kowiki_raw_full_v1
 /home/work/.data/hrm_text_prepared/hf_extra_reasoning_agent_mm_v1
 /home/work/.data/hrm_text_prepared/local_terminal_conversations_ctx9k_resp6k_v1
+/home/work/.data/hrm_text_prepared/sft_bcai_finance_kor_v1
 ```
 
 현재 stage-1의 14.55B tokens는 최종 40B 목표가 아니라 GPU를 먼저 계속 쓰기 위한 fast-cap stage입니다. 기존 HRM cleaned 328G 원본은 새 tokenizer로 cap 없이 다시 처리해야 하며, 현재는 fast-cap tokenized root를 재활용해 uncapped 산출물로 확장하는 방식으로 진행합니다. 완료 후 sampling/merge해서 다음 stage에서 이어 학습합니다.

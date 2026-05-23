@@ -163,6 +163,7 @@ Completed and prepared datasets:
 | Korean Wikipedia raw full | 462.5M | 1.8G | prepared for later stages |
 | HF extra reasoning/agent/mm subset | 112.6M | 444M | prepared, limited weight |
 | Local terminal conversations | 9.39B | 36G | prepared for terminal-heavy later stages |
+| BCAI Finance Korean | 857.7M | 3.3G | prepared and uploaded for later Korean finance/domain stages |
 | SWE-ZERO prepared | 182.7M | 720M | pretraining and later SFT |
 | GLM reasoning prepared | 68.5M | 282M | pretraining and later SFT |
 
@@ -184,12 +185,16 @@ Major source groups and provenance:
 | DeepSeek agent traces | https://huggingface.co/datasets/TeichAI/DeepSeek-v4-Pro-Agent | limited agent/tool-use subset; license-sensitive |
 | structured Wikipedia | https://huggingface.co/datasets/wikimedia/structured-wikipedia | tokenizer/general text support |
 | Local terminal/code/math conversations | local `swe`, `code`, and `math` parquet conversations | `local_terminal_conversations_ctx9k_resp6k_v1` |
+| BCAI Finance Kor | https://huggingface.co/datasets/BCCard/BCAI-Finance-Kor-1862K | `sft_bcai_finance_kor_v1` |
 
 The full Korean legal/admin task upload is present in the dataset repository at:
 
 - `korean_legal_tasks_full_v1/`
 - `raw_jsonl/korean_legal_tasks_full_20260524.jsonl`
 - `LEGAL_FULL_TASKS_README.md`
+- `sft_bcai_finance_kor_v1/`
+- `raw_jsonl/bcai_finance_kor_hrm_20260524.jsonl`
+- `FINANCE_BCAI_README.md`
 
 Evaluation-like data is excluded from training where identified, including ToolBench eval, Terminal Bench 2 style data, and benchmark-oriented `chi-bench` data.
 
