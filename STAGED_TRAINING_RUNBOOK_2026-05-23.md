@@ -104,3 +104,33 @@ python sample_tokenized.py \
 ```
 
 그 다음 `scripts/merge_prepared_sft_data.py`로 stage-1 입력 mix를 만들고, stage-0 checkpoint에서 resume합니다.
+
+## data_io tokenizer 로컬 패치
+
+HRM cleaned 원본은 `sapientinc/data_io`의 Rust tokenizer 경로를 기준으로 처리합니다. 현재 로컬 clone은 `/home/work/.projects/LLM-OS-Models/Terminal/data_io`입니다.
+
+현재 적용한 로컬 변경:
+
+- `WalkDir::follow_links(true)` 적용. Hugging Face snapshot 내부 symlink를 따라가야 실제 parquet/jsonl 파일을 스캔할 수 있습니다.
+- `read_any_stream` callback이 `bool`을 반환하도록 변경. row cap에 도달하면 파일 전체를 끝까지 읽지 않고 조기 종료합니다.
+- `--epochs-for-caps`와 `--cap prefix=max_rows` 옵션 추가. 너무 큰 source는 prefix별로 제한해 fast-cap 전처리를 먼저 만들 수 있습니다.
+- condition이 `synth,direct`, `noisy,cot`처럼 복합으로 들어오면 쉼표 기준으로 분리합니다.
+- condition token을 하나도 쓰지 못한 row는 `direct` condition으로 fallback합니다.
+- metadata에 `row_limit`을 저장합니다. 같은 input 파일이라도 cap이 바뀌면 다시 처리됩니다.
+
+현재 기본 cap:
+
+| prefix | rows per epoch |
+|---|---:|
+| `SYNTH__` | 20,000 |
+| `flan__cot_` | unlimited |
+| `flan__` | 5,000 |
+| `dmmath__` | 100,000 |
+| `ampsmathematica__` | 10,000 |
+| `tasksource__` | 10,000 |
+| `openmathinstruct2__` | 2,000,000 |
+| `acereason__` | 2,000,000 |
+| `openthoughts2__` | 500,000 |
+| `sudoku_extreme__` | 1,000,000 |
+
+이 fast-cap은 full 328G 전처리를 포기한다는 뜻이 아닙니다. GPU를 놀리지 않기 위한 stage-1 입력을 먼저 만들고, full/large stratified retokenization은 별도 stage로 이어갑니다.
