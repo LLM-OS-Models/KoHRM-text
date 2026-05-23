@@ -1,6 +1,6 @@
-# HRM-Text Ko Terminal
+# KoHRM-Text
 
-2026-05-23 기준 로컬 작업 저장소입니다. 목표는 `sapientinc/HRM-Text` 구조와 PrefixLM 학습 코드를 유지하면서, 한국어/영어/코딩/터미널/툴콜을 잘 처리하는 새 HRM-Text 계열 모델을 처음부터 학습하는 것입니다.
+2026-05-23 기준 로컬 작업 저장소입니다. 목표는 `sapientinc/HRM-Text` 구조와 PrefixLM 학습 코드를 유지하면서, 한국어/영어/코딩/터미널/툴콜을 잘 처리하는 새 `KoHRM-Text` 계열 모델을 처음부터 학습하는 것입니다.
 
 원본 HRM-Text README는 `UPSTREAM_README.md`에 보존했습니다.
 
@@ -143,4 +143,3 @@ torchrun --standalone --nproc_per_node=8 pretrain.py \
 3. HRM cleaned 328G 전체 또는 더 큰 stratified sample을 새 tokenizer로 재패킹합니다.
 4. 한국어 위키와 local terminal dataset 변환을 추가합니다.
 5. 장기 pretraining 후 epoch 단위로 Hugging Face에 업로드합니다.
-
