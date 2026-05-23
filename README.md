@@ -61,7 +61,7 @@
 
 ## 학습 데이터
 
-현재 실제 pretraining mix v1까지 생성했습니다.
+현재 실제 pretraining mix v1과 HRM cleaned fast-cap stage-1 V1Dataset까지 생성했습니다.
 
 | 데이터 | 상태 | token |
 |---|---|---:|
@@ -70,6 +70,7 @@
 | 한국어 법률/조례/행정규칙/판례 task | 전처리 완료 | 83.1M |
 | ToolBench train tool-call task | 전처리 완료 | 127.0M |
 | `koterm_pretrain_mix_v1` | 병합 완료 | 711.3M |
+| HRM cleaned fast-cap stage-1 | V1Dataset 생성 완료 | 14.55B |
 
 주요 경로:
 
@@ -79,6 +80,7 @@
 /home/work/.data/hrm_text_prepared/sft_korean_legal_v1
 /home/work/.data/hrm_text_prepared/sft_toolbench_v1
 /home/work/.data/hrm_text_prepared/koterm_pretrain_mix_v1
+/home/work/.data/hrm_text_prepared/koterm_hrm_cleaned_fastcap_stage1_v1
 ```
 
 `koterm_pretrain_mix_v1` 구성:
@@ -110,16 +112,16 @@
 
 이 pilot은 학습 코드, FA3, FSDP2, tokenizer, V1Dataset 포맷 검증용입니다. 최종 데이터 mix는 아닙니다.
 
-## 현재 실행 방식
+## 현재 실행 상태
 
 전처리와 학습은 병렬로 진행합니다.
 
-1. 이미 전처리된 `koterm_pretrain_mix_v1` 711.3M tokens로 `KoHRM-Text-1.4B` stage-0 학습을 먼저 수행합니다.
-2. HRM cleaned 원본 fast-cap 전처리는 별도 CPU 프로세스로 계속 진행합니다.
-3. 새 V1Dataset이 완성되면 기존 checkpoint에서 resume해서 stage-1, stage-2로 이어 학습합니다.
+1. `koterm_pretrain_mix_v1` 711.3M tokens stage-0 학습을 완료했습니다.
+2. stage-0 checkpoint에서 같은 mix를 한 번 더 이어 학습한 stage0b checkpoint를 저장했습니다.
+3. HRM cleaned fast-cap V1Dataset 14.55B tokens를 생성했고, 현재 stage-1 학습을 진행 중입니다.
 4. checkpoint 업로드는 학습 프로세스 안에서 하지 않고 watcher 프로세스로 분리해 epoch 단위로만 HF에 업로드합니다.
 
-stage-0 실행 기준:
+현재 stage-1 실행 기준:
 
 ```bash
 cd /home/work/.projects/LLM-OS-Models/Terminal/HRM-Text
@@ -134,18 +136,22 @@ NCCL_DEBUG=WARN \
 TORCH_NCCL_ASYNC_ERROR_HANDLING=1 \
 taskset -c 0-31 torchrun --standalone --nproc_per_node=8 pretrain.py \
   arch/size@arch=XL \
-  data.path=/home/work/.data/hrm_text_prepared/koterm_pretrain_mix_v1 \
-  +checkpoint_path=/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage0-available-mix-gbs172 \
+  data.path=/home/work/.data/hrm_text_prepared/koterm_hrm_cleaned_fastcap_stage1_v1 \
+  resume_from=/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage0b-debug-launch2 \
+  +checkpoint_path=/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs262 \
   +project_name=KoHRM-Text \
-  +run_name=KoHRM-Text-1.4B-stage0-available-mix-gbs172 \
+  +run_name=KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs262 \
   epochs=1 \
-  global_batch_size=172032 \
+  global_batch_size=262144 \
   lr_warmup_steps=2000 \
-  +log_interval=5 \
+  resume_step_offset=7765 \
+  total_steps_override=63300 \
   checkpoint_interval=1
 ```
 
-`global_batch_size=196608`은 논문 기본값이지만, 우리 tokenizer는 vocab 131,072라 final logits 메모리가 더 큽니다. 장기 학습에서는 OOM 여유를 위해 `172032`을 기본값으로 둡니다.
+stage-1은 `global_batch_size=262144`로 H200 VRAM을 더 적극적으로 사용합니다. 관측값은 GPU0 약 118GB, 나머지 약 116GB VRAM, 8장 모두 99% utilization입니다. 안정 속도는 약 `1.09-1.10 sec/step`, 즉 약 238k-240k tokens/sec입니다.
+
+stage0b checkpoint는 HF `LLM-OS-Models/KoHRM-Text-1.4B`에 raw FSDP2 artifact로 업로드 완료했습니다.
 
 ## 로컬 데이터 주의
 
@@ -163,8 +169,7 @@ taskset -c 0-31 torchrun --standalone --nproc_per_node=8 pretrain.py \
 
 ## 다음 작업
 
-1. stage-0 학습 완료 시 raw FSDP2 checkpoint를 HF `LLM-OS-Models/KoHRM-Text-1.4B`에 epoch 단위 업로드합니다.
-2. HRM cleaned fast-cap 전처리가 끝나면 `sample_tokenized.py`로 V1Dataset을 만들고 stage-1로 resume합니다.
-3. local terminal dataset `swe/math/code.parquet`를 V1Dataset으로 변환해 stage-2에 추가합니다.
-4. full training용 45B~52B token mix를 확정한 뒤 장기 pretraining을 이어갑니다.
-5. 최종 checkpoint를 선택하면 `conversion/convert_to_hf.py`로 model-only artifact를 따로 변환합니다.
+1. 현재 stage-1 학습을 완료하고 raw FSDP2 checkpoint를 HF에 epoch 단위 업로드합니다.
+2. local terminal dataset `swe/math/code.parquet`를 V1Dataset으로 변환해 stage-2에 추가합니다.
+3. full training용 45B~52B token mix를 확정한 뒤 장기 pretraining을 이어갑니다.
+4. 최종 checkpoint를 선택하면 `conversion/convert_to_hf.py`로 model-only artifact를 따로 변환합니다.

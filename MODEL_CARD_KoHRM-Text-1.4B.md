@@ -51,7 +51,7 @@ Tokenizer repo: `LLM-OS-Models/HRM-Text-Ko-Terminal-Tokenizer-131K`
 
 ## 학습 데이터
 
-stage-0 입력은 전처리 완료된 711.3M token mix입니다.
+stage-0/stage0b 입력은 전처리 완료된 711.3M token mix입니다.
 
 | 데이터 | token |
 |---|---:|
@@ -61,7 +61,7 @@ stage-0 입력은 전처리 완료된 711.3M token mix입니다.
 | ToolBench train tool-call task | 127.0M |
 | 합계 | 711.3M |
 
-이후 stage는 HRM cleaned 원본 retokenized dataset, local terminal dataset, 추가 한국어/코딩/툴콜 데이터를 순차적으로 포함합니다. 평가 데이터 성격의 `tb2_lite`, Terminal Bench 2, ToolBench eval, chi-bench는 train에서 제외합니다.
+현재 stage-1은 HRM cleaned fast-cap V1Dataset 14.55B tokens로 학습 중입니다. 이후 stage는 local terminal dataset, 추가 한국어/코딩/툴콜 데이터를 순차적으로 포함합니다. 평가 데이터 성격의 `tb2_lite`, Terminal Bench 2, ToolBench eval, chi-bench는 train에서 제외합니다.
 
 ## 학습 방식
 
@@ -69,17 +69,18 @@ stage-0 입력은 전처리 완료된 711.3M token mix입니다.
 - Optimizer: HRM-Text upstream Adam-atan2
 - Context: 4096 tokens
 - Hardware: 8 x NVIDIA H200
-- Current stable global batch: 172,032 tokens
+- Current stage-1 global batch: 262,144 tokens
 - Checkpoint policy: epoch-level raw FSDP2 checkpoint upload
 
-논문 기본 global batch는 196,608 tokens였지만, 이 모델은 vocab이 131,072로 커서 final logits memory가 더 큽니다. 장기 run에서는 OOM 여유를 위해 172,032 tokens를 기본값으로 사용합니다.
+stage-1은 8 x H200에서 `global_batch_size=262144`로 실행 중이며, 관측 VRAM은 GPU0 약 118GB, 나머지 약 116GB입니다. 안정 속도는 약 `1.09-1.10 sec/step`, 약 238k-240k tokens/sec입니다. 문제가 생기면 `196608` batch로 되돌려 resume합니다.
 
 Staged pretraining에서는 checkpoint의 model/optimizer/EMA/carry를 이어받고, `resume_step_offset`과 `total_steps_override`로 LR schedule을 전체 pretraining 기준에 맞춥니다. 즉, 새 데이터가 준비될 때마다 학습을 재시작하되 optimizer와 schedule을 끊지 않는 방향으로 운용합니다.
 
 ## 현재 상태
 
-- stage-0 training: in progress
-- HF upload: epoch checkpoint watcher active
+- stage-0/stage0b training: complete
+- stage0b HF upload: complete
+- stage-1 HRM fast-cap training: in progress
 - final Transformers conversion: not yet produced
 - public benchmark score: not yet evaluated for this model
 
