@@ -4,6 +4,19 @@
 
 원본 HRM-Text README는 `UPSTREAM_README.md`에 보존했습니다.
 
+## 모델 이름
+
+| 항목 | 값 |
+|---|---|
+| 표준 모델명 | `KoHRM-Text-1.4B` |
+| HF model repo | `LLM-OS-Models/KoHRM-Text-1.4B` |
+| GitHub repo | `https://github.com/LLM-OS-Models/KoHRM-text.git` |
+| base code | `sapientinc/HRM-Text` |
+| arch | `XL` |
+| 추정 params | 1,384,120,320 |
+
+`KoHRM-Text-1.4B`는 새 131K tokenizer를 쓰는 scratch pretraining 모델입니다. 기존 `sapientinc/HRM-Text-1B` 가중치를 이어 쓰는 모델이 아닙니다.
+
 ## 현재 결론
 
 - 기존 `sapientinc/HRM-Text-1B` 평가는 완료했고, 터미널/툴콜 기준으로는 그대로 쓰기 어렵다는 판단입니다.
@@ -18,6 +31,8 @@
 |---|---|
 | `PRETRAINING_SFT_DATA_MIX_2026-05-23.md` | 사전학습/SFT 데이터 구성, 비중, 제외 기준 |
 | `TRAINING_PLAN_2026-05-23.md` | 전체 학습 전략, tokenizer, 실행 정책 |
+| `STAGED_TRAINING_RUNBOOK_2026-05-23.md` | 완료된 전처리 데이터부터 학습하고 새 데이터가 생기면 이어 학습하는 실행 절차 |
+| `MODEL_CARD_KoHRM-Text-1.4B.md` | HF model card 초안 |
 | `AVAILABLE_DATA.md` | 로컬 데이터 인벤토리와 용량 |
 | `PROGRESS_2026-05-23.md` | 실제 진행 로그 |
 | `UPSTREAM_README.md` | 원본 HRM-Text README |
@@ -95,13 +110,21 @@
 
 이 pilot은 학습 코드, FA3, FSDP2, tokenizer, V1Dataset 포맷 검증용입니다. 최종 데이터 mix는 아닙니다.
 
-## 실행 예시
+## 현재 실행 방식
 
-다음 probe는 711M token mix로 L/XL batch를 확인하는 단계입니다.
+전처리와 학습은 병렬로 진행합니다.
+
+1. 이미 전처리된 `koterm_pretrain_mix_v1` 711.3M tokens로 `KoHRM-Text-1.4B` stage-0 학습을 먼저 수행합니다.
+2. HRM cleaned 원본 fast-cap 전처리는 별도 CPU 프로세스로 계속 진행합니다.
+3. 새 V1Dataset이 완성되면 기존 checkpoint에서 resume해서 stage-1, stage-2로 이어 학습합니다.
+4. checkpoint 업로드는 학습 프로세스 안에서 하지 않고 watcher 프로세스로 분리해 epoch 단위로만 HF에 업로드합니다.
+
+stage-0 실행 기준:
 
 ```bash
 cd /home/work/.projects/LLM-OS-Models/Terminal/HRM-Text
 
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
 WANDB_MODE=offline \
 WANDB_DIR=/home/work/.data/wandb \
 TOKENIZERS_PARALLELISM=false \
@@ -109,18 +132,20 @@ OMP_NUM_THREADS=1 \
 MKL_NUM_THREADS=1 \
 NCCL_DEBUG=WARN \
 TORCH_NCCL_ASYNC_ERROR_HANDLING=1 \
-torchrun --standalone --nproc_per_node=8 pretrain.py \
-  arch/size@arch=L \
+taskset -c 0-31 torchrun --standalone --nproc_per_node=8 pretrain.py \
+  arch/size@arch=XL \
   data.path=/home/work/.data/hrm_text_prepared/koterm_pretrain_mix_v1 \
-  +checkpoint_path=/home/work/.data/hrm_text_checkpoints/koterm_l_pretrain_mix_v1 \
-  +project_name=HRM-Ko-Terminal \
-  +run_name=koterm_l_pretrain_mix_v1 \
+  +checkpoint_path=/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage0-available-mix-gbs172 \
+  +project_name=KoHRM-Text \
+  +run_name=KoHRM-Text-1.4B-stage0-available-mix-gbs172 \
   epochs=1 \
-  global_batch_size=262144 \
-  lr_warmup_steps=100 \
+  global_batch_size=172032 \
+  lr_warmup_steps=2000 \
   +log_interval=5 \
   checkpoint_interval=1
 ```
+
+`global_batch_size=196608`은 논문 기본값이지만, 우리 tokenizer는 vocab 131,072라 final logits 메모리가 더 큽니다. 장기 학습에서는 OOM 여유를 위해 `172032`을 기본값으로 둡니다.
 
 ## 로컬 데이터 주의
 
@@ -138,8 +163,8 @@ torchrun --standalone --nproc_per_node=8 pretrain.py \
 
 ## 다음 작업
 
-1. `koterm_pretrain_mix_v1`로 L/XL batch probe를 실행합니다.
-2. H200 8장 기준 최대 global batch를 찾습니다.
-3. HRM cleaned 328G 전체 또는 더 큰 stratified sample을 새 tokenizer로 재패킹합니다.
-4. 한국어 위키와 local terminal dataset 변환을 추가합니다.
-5. 장기 pretraining 후 epoch 단위로 Hugging Face에 업로드합니다.
+1. stage-0 학습 완료 시 raw FSDP2 checkpoint를 HF `LLM-OS-Models/KoHRM-Text-1.4B`에 epoch 단위 업로드합니다.
+2. HRM cleaned fast-cap 전처리가 끝나면 `sample_tokenized.py`로 V1Dataset을 만들고 stage-1로 resume합니다.
+3. local terminal dataset `swe/math/code.parquet`를 V1Dataset으로 변환해 stage-2에 추가합니다.
+4. full training용 45B~52B token mix를 확정한 뒤 장기 pretraining을 이어갑니다.
+5. 최종 checkpoint를 선택하면 `conversion/convert_to_hf.py`로 model-only artifact를 따로 변환합니다.

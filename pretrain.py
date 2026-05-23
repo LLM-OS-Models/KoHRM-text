@@ -72,6 +72,8 @@ class PretrainConfig(pydantic.BaseModel):
     resume_from: Optional[str] = None
     resume_epoch: Optional[int] = None
     weights_only_resume_from_ema: bool = False  # Swap EMA into model + reset optim
+    resume_step_offset: int = 0  # Global step offset for staged pretraining LR continuity.
+    total_steps_override: Optional[int] = None  # Planned total global steps across stages.
 
     # Extras
     seed: int = 0
@@ -176,13 +178,17 @@ def init_train(config: PretrainConfig, rank: int, world_size: int):
 
     # Train state
     # Estimated total training steps
-    total_steps = int(config.epochs * train_metadata.total_length // config.global_batch_size)
+    stage_steps = int(config.epochs * train_metadata.total_length // config.global_batch_size)
+    if config.total_steps_override is not None:
+        total_steps = config.total_steps_override
+    else:
+        total_steps = config.resume_step_offset + stage_steps
     train_state = TrainState(
         model=model,
         carry=carry,
         optim=optim,
         
-        step=0,
+        step=config.resume_step_offset,
         total_steps=total_steps
     )
     return train_state, train_loader, train_metadata
@@ -342,7 +348,7 @@ def launch(hydra_config: DictConfig):
     # Progress bar and logger
     progress_bar = None
     if RANK == 0:
-        progress_bar = tqdm.tqdm(total=train_state.total_steps)
+        progress_bar = tqdm.tqdm(total=train_state.total_steps, initial=train_state.step)
 
         wandb.init(project=config.project_name, name=config.run_name, config=config.model_dump() | {"train_metadata": train_metadata.model_dump()},
                    settings=wandb.Settings(_disable_stats=True))  # type: ignore
