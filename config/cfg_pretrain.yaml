@@ -20,3 +20,9 @@ beta1: 0.9
 beta2: 0.95
 
 ema: 0.9999
+
+resume_from: null
+resume_epoch: null
+weights_only_resume_from_ema: false
+resume_step_offset: 0
+total_steps_override: null
