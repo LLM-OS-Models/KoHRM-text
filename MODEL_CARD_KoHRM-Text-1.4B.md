@@ -15,76 +15,216 @@ pipeline_tag: text-generation
 
 # KoHRM-Text-1.4B
 
-`KoHRM-Text-1.4B`는 `sapientinc/HRM-Text`의 PrefixLM 학습 구조를 기반으로, 한국어/영어/코딩/터미널/툴콜 사용성을 목표로 scratch pretraining하는 모델입니다.
+`KoHRM-Text-1.4B` is a scratch-pretrained Korean/English/code/terminal/tool-use model based on the `sapientinc/HRM-Text` PrefixLM training stack.
 
-이 카드는 2026-05-23 기준 작업 중인 모델 카드 초안입니다. 현재 메인 artifact는 stage0b checkpoint를 변환한 `model.safetensors` 안전 포맷입니다. raw HRM-Text FSDP2 checkpoint는 optimizer/EMA resume 용도이므로 메인 repo에서 제거하고 별도 raw checkpoint repo로 분리합니다.
+This is not a continued finetune of `sapientinc/HRM-Text-1B`. It uses a new Korean/terminal-oriented 131K byte-level BPE tokenizer and a new scratch training run.
 
-## 모델 정보
+## Links
 
-| 항목 | 값 |
+| Item | Link |
 |---|---|
-| model id | `LLM-OS-Models/KoHRM-Text-1.4B` |
-| base code | `sapientinc/HRM-Text` |
-| training from | scratch |
-| architecture | HRM-Text `XL` |
-| params | 1,384,120,320 |
-| context | 4096 tokens |
-| dtype | bfloat16 |
-| tokenizer | byte-level BPE, NFC normalization |
-| vocab | 131,072 |
+| HF model | https://huggingface.co/LLM-OS-Models/KoHRM-Text-1.4B |
+| Project code | https://github.com/LLM-OS-Models/KoHRM-text |
+| Upstream HRM-Text code | https://github.com/sapientinc/HRM-Text |
+| HRM-Text paper | https://arxiv.org/html/2605.20613 |
+| Tokenizer | https://huggingface.co/LLM-OS-Models/HRM-Text-Ko-Terminal-Tokenizer-131K |
+| Raw resume checkpoints | https://huggingface.co/LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints |
 
-## 토크나이저
+## Release Policy
 
-새 tokenizer는 한국어, 영어, 코드, shell, terminal instruction, JSON tool-call을 함께 고려해 학습했습니다.
+The main model repository is intended to expose the latest model-only artifact:
 
-| 샘플 | chars/token |
+- `model.safetensors`
+- `config.json`
+- `tokenizer.json`
+- `tokenizer_config.json`
+- `README.md`
+
+It is not intended to keep every training checkpoint as visible model files. Intermediate FSDP2 `.distcp` checkpoints are large resume artifacts and are kept separately in `LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints` when needed. The main repo may still have normal Hugging Face git history, but the current file tree should be treated as the latest public model export.
+
+Current public artifact: `stage1` HRM fast-cap checkpoint at `step_25000`, converted with EMA weights to `safetensors`. Training is still in progress.
+
+## Model Details
+
+| Field | Value |
+|---|---|
+| Model id | `LLM-OS-Models/KoHRM-Text-1.4B` |
+| Standard name | `KoHRM-Text-1.4B` |
+| Training origin | scratch |
+| Architecture family | HRM-Text PrefixLM |
+| Architecture size | `XL` |
+| Parameters | 1,384,120,320 |
+| Context length | 4,096 tokens |
+| Training dtype | bfloat16 |
+| Tokenizer | byte-level BPE, NFC normalization |
+| Vocabulary size | 131,072 |
+| Objective | PrefixLM response-only loss |
+| Optimizer | Adam-atan2 from upstream HRM-Text |
+| EMA | 0.9999 |
+
+The model config uses `model_type: hrm_text` and `architectures: ["HrmTextForCausalLM"]`. At the time of this checkpoint, `HrmTextForCausalLM` is a project-side custom architecture, not a built-in Transformers architecture.
+
+## Tokenizer
+
+The tokenizer was trained for Korean, English, code, shell/terminal text, and JSON/tool-call formats. It intentionally keeps common chat/tool special tokens as stable single tokens where possible.
+
+| Sample bucket | chars/token |
 |---|---:|
-| 한국어 일반 | 2.60 |
-| 한국어 법률 | 2.36 |
-| 한국어 터미널 지시 | 2.18 |
+| Korean general text | 2.60 |
+| Korean legal text | 2.36 |
+| Korean terminal instruction | 2.18 |
 | shell command | 2.68 |
-| tool JSON | 3.32 |
+| tool-call JSON | 3.32 |
 | Python code | 3.37 |
-| 영어 | 4.40 |
+| English | 4.40 |
 
-Tokenizer repo: `LLM-OS-Models/HRM-Text-Ko-Terminal-Tokenizer-131K`
+Important formatting tokens include:
 
-## 학습 데이터
+- `<|im_start|>`
+- `<|im_end|>`
+- `<|box_end|>`
+- `<|object_ref_start|>` for direct condition
+- `<|object_ref_end|>` for cot condition
+- `<|quad_start|>` for noisy condition
+- `<|quad_end|>` for synth condition
 
-stage-0/stage0b 입력은 전처리 완료된 711.3M token mix입니다.
+## Usage
 
-| 데이터 | token |
-|---|---:|
-| HRM cleaned base sample | 250.0M |
-| SWE-ZERO + GLM reasoning mix | 251.2M |
-| 한국어 법률/조례/행정규칙/판례 task | 83.1M |
-| ToolBench train tool-call task | 127.0M |
-| 합계 | 711.3M |
+### Tokenizer
 
-현재 stage-1은 HRM cleaned fast-cap V1Dataset 14.55B tokens로 학습 중입니다. 이후 stage는 local terminal dataset, 추가 한국어/코딩/툴콜 데이터를 순차적으로 포함합니다. 평가 데이터 성격의 `tb2_lite`, Terminal Bench 2, ToolBench eval, chi-bench는 train에서 제외합니다.
+```python
+from transformers import AutoTokenizer
 
-## 학습 방식
+tokenizer = AutoTokenizer.from_pretrained(
+    "LLM-OS-Models/KoHRM-Text-1.4B",
+    use_fast=True,
+)
 
-- Objective: PrefixLM style response-only loss
-- Optimizer: HRM-Text upstream Adam-atan2
-- Context: 4096 tokens
-- Hardware: 8 x NVIDIA H200
-- Current stage-1 global batch: 229,376 tokens
-- Checkpoint policy: main repo에는 `safetensors`, raw FSDP2는 별도 raw checkpoint repo
+prompt = "<|im_start|><|object_ref_start|>한국어로 현재 디렉터리의 큰 파일을 찾는 명령을 알려주세요.<|im_end|>"
+ids = tokenizer(prompt, add_special_tokens=False)["input_ids"]
+print(len(ids), ids[:20])
+```
 
-stage-1은 처음 `global_batch_size=262144`로 시도했지만, 후속 compile graph에서 `32768 x 131072` bf16 logits buffer 추가 할당이 필요해 OOM이 발생했습니다. 현재는 `global_batch_size=229376`으로 재시작해 진행 중이며, 관측 VRAM은 GPU0 약 105GB, 나머지 약 103GB입니다. 안정 속도는 약 `1.02-1.03 step/sec`입니다.
+### Model Weights
 
-Staged pretraining에서는 checkpoint의 model/optimizer/EMA/carry를 이어받고, `resume_step_offset`과 `total_steps_override`로 LR schedule을 전체 pretraining 기준에 맞춥니다. 즉, 새 데이터가 준비될 때마다 학습을 재시작하되 optimizer와 schedule을 끊지 않는 방향으로 운용합니다.
+The repo currently contains a model-only `safetensors` export. Because the architecture is custom (`hrm_text`), direct `AutoModelForCausalLM.from_pretrained(...)` generation requires an HRM-Text-compatible modeling wrapper or remote-code integration. Until that wrapper is added to the model repo, use the project code and raw FSDP2 checkpoint path for internal inference/resume workflows.
 
-## 현재 상태
+Raw checkpoint inference pattern:
 
-- stage-0/stage0b training: complete
-- stage0b safetensors HF upload: complete
-- unsafe raw DCP files removed from main HF repo
-- stage-1 HRM fast-cap training: in progress
-- final Transformers conversion: not yet produced
-- public benchmark score: not yet evaluated for this model
+```python
+from simple_inference_engine import inference_load_checkpoint, inference_generate
 
-## 제한사항
+ckpt = inference_load_checkpoint(
+    ckpt_path="/path/to/KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs180",
+    ckpt_epoch=25000,
+    ckpt_use_ema=True,
+    device="cuda",
+)
 
-현재 checkpoint artifact는 중간 학습 산출물입니다. 안전성 정렬, 최종 instruction tuning, 최종 benchmark, 배포용 변환이 끝난 모델이 아닙니다. 한국어 터미널/툴콜 능력은 목표 영역이지만, stage-0만으로는 완성된 성능을 보장하지 않습니다.
+prompts = iter([
+    (0, ("direct", "한국어로 `du`와 `df`의 차이를 설명해주세요.")),
+])
+
+for _, text in inference_generate(
+    ckpt,
+    prompts,
+    max_tokens=4096,
+    max_generation=512,
+    batch_size=1,
+    temp=0.0,
+):
+    print(text)
+```
+
+For code and training scripts, see https://github.com/LLM-OS-Models/KoHRM-text.
+
+## Training Data
+
+All datasets are converted into HRM-Text V1Dataset style records with `instruction`, `response`, and `condition` fields where possible. The training objective is PrefixLM response-only loss, so the model is trained to predict the response span after seeing the instruction/prompt span.
+
+Completed and prepared datasets:
+
+| Dataset | Tokens | Disk | Use |
+|---|---:|---:|---|
+| `koterm_pretrain_mix_v1` | 711.3M | 2.8G | stage-0/stage0b |
+| HRM cleaned base sample | 250.0M | 994M | included in stage-0 mix |
+| SWE-ZERO + GLM pilot mix | 251.2M | 990M | included in stage-0 mix |
+| Korean legal SFT/task data | 83.1M | 336M | included in stage-0 mix |
+| ToolBench train tool-call data | 127.0M | 500M | included in stage-0 mix |
+| HRM cleaned fast-cap stage-1 | 14.55B | 148G | current stage-1 |
+| Korean statutes/local ordinances raw full | 308.9M | 1.2G | prepared for later stages |
+| Korean administrative rules + precedents raw full | 271.7M | 1.1G | prepared for later stages |
+| Korean Wikipedia raw full | 462.5M | 1.8G | prepared for later stages |
+| HF extra reasoning/agent/mm subset | 112.6M | 444M | prepared, limited weight |
+| Local terminal conversations | 9.39B | 36G | prepared for terminal-heavy later stages |
+| SWE-ZERO prepared | 182.7M | 720M | pretraining and later SFT |
+| GLM reasoning prepared | 68.5M | 282M | pretraining and later SFT |
+
+Major source groups:
+
+- Upstream HRM-Text cleaned pretraining data from `sapientinc/HRM-Text-data-io-cleaned-20260515`
+- Korean Wikipedia
+- Korean statutes, local ordinances, administrative rules, and precedent corpora
+- ToolBench train trajectories and tool-use instructions
+- Local terminal/code/math conversations
+- SWE-ZERO terminal/code trajectories
+- GLM reasoning samples
+- Small, reviewed subsets of extra reasoning/agent datasets
+
+Evaluation-like data is excluded from training where identified, including ToolBench eval, Terminal Bench 2 style data, and benchmark-oriented `chi-bench` data.
+
+## Training Run
+
+The current public checkpoint was produced through staged pretraining:
+
+1. Train `stage-0` on `koterm_pretrain_mix_v1` with 711.3M tokens.
+2. Continue once more on the same available mix as `stage0b`.
+3. Continue to `stage-1` on HRM cleaned fast-cap data with 14.55B tokens.
+4. Convert `stage1 step_25000` EMA weights to `safetensors` and upload to the main model repo.
+
+Current long-running stage-1 settings:
+
+| Field | Value |
+|---|---|
+| Hardware | 8 x NVIDIA H200 |
+| Data | `koterm_hrm_cleaned_fastcap_stage1_v1` |
+| Tokens in current stage dataset | 14.55B |
+| Global batch | 180,224 tokens |
+| Local token slots/GPU | 22,528 |
+| Context | 4,096 |
+| LR | 2.2e-4 |
+| LR warmup | 2,000 steps |
+| Checkpoint interval | 5,000 steps |
+| Current public export | `step_25000`, EMA, safetensors |
+
+The run uses staged continuation. The checkpoint carries model, optimizer, EMA, and recurrent carry state forward. `resume_step_offset` and `total_steps_override` are used so the learning-rate schedule follows the intended longer pretraining run rather than resetting at every data stage.
+
+The full HRM 328G cleaned corpus is being retokenized with the new 131K tokenizer. That full no-cap retokenization is intended to support a larger 40B+ token training continuation, instead of stopping at the 14.55B fast-cap stage.
+
+## Intended Use
+
+This checkpoint is intended for:
+
+- continued pretraining experiments
+- Korean tokenizer and HRM-Text architecture experiments
+- terminal/tool-call/code pretraining research
+- checkpoint conversion and evaluation work
+
+It is not yet intended as a finished assistant model.
+
+## Limitations
+
+- This is an intermediate checkpoint, not a final aligned instruct model.
+- It has not completed the full planned 40B+ token continuation.
+- It has not completed final SFT or safety tuning.
+- Public benchmark scores for this new checkpoint are not final.
+- Direct Transformers generation requires adding the custom `hrm_text` modeling wrapper or remote-code files.
+- Tool-call JSON validity and terminal action safety must be evaluated before production use.
+
+## Citation
+
+This work builds on the HRM-Text architecture and training stack:
+
+- Paper: https://arxiv.org/html/2605.20613
+- Upstream code: https://github.com/sapientinc/HRM-Text
+
