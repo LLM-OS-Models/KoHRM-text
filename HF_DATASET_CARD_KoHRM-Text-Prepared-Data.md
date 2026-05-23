@@ -147,7 +147,8 @@ Major sources used while constructing these prepared datasets:
 | Korean Wikipedia | https://dumps.wikimedia.org/kowiki/20260501/ | Korean general/wiki text |
 | Korean statutes | https://github.com/legalize-kr/legalize-kr | Korean legal raw text and task data |
 | Korean local ordinances | https://github.com/legalize-kr/ordinance-kr | Korean local law raw text |
-| Administrative rules / precedents | local Korean legal/admin corpus snapshots | Korean administrative and precedent text |
+| Korean administrative rules | local Markdown snapshot at `/home/work/.projects/LLM-OS-Models/Terminal/admrule-kr` | Korean administrative-rule text and task rows |
+| Korean precedents | local Markdown snapshot at `/home/work/.projects/LLM-OS-Models/Terminal/precedent-kr` | Korean precedent text and task rows |
 | ToolBench | local `data_toolbench` extraction from ToolBench train data | Tool-call/API/JSON trajectories; eval split excluded |
 | SWE-ZERO | https://huggingface.co/datasets/AlienKevin/SWE-ZERO-12M-trajectories | Terminal/code trajectory subset |
 | GLM reasoning | https://huggingface.co/datasets/Jackrong/GLM-5.1-Reasoning-1M-Cleaned | Reasoning/instruction subset |

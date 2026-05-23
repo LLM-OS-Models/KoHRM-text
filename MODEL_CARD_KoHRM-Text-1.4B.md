@@ -25,6 +25,7 @@ This is not a continued finetune of `sapientinc/HRM-Text-1B`. It uses a new Kore
 |---|---|
 | HF model | https://huggingface.co/LLM-OS-Models/KoHRM-Text-1.4B |
 | Project code | https://github.com/LLM-OS-Models/KoHRM-text |
+| Prepared training data | https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-prepared-data |
 | Upstream HRM-Text code | https://github.com/sapientinc/HRM-Text |
 | HRM-Text paper | https://arxiv.org/html/2605.20613 |
 | Tokenizer | https://huggingface.co/LLM-OS-Models/HRM-Text-Ko-Terminal-Tokenizer-131K |
@@ -140,6 +141,10 @@ For code and training scripts, see https://github.com/LLM-OS-Models/KoHRM-text.
 
 ## Training Data
 
+Prepared data artifacts are uploaded to the Hugging Face dataset repository, not to the model repository:
+
+https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-prepared-data
+
 All datasets are converted into HRM-Text V1Dataset style records with `instruction`, `response`, and `condition` fields where possible. The training objective is PrefixLM response-only loss, so the model is trained to predict the response span after seeing the instruction/prompt span.
 
 Completed and prepared datasets:
@@ -154,24 +159,41 @@ Completed and prepared datasets:
 | HRM cleaned fast-cap stage-1 | 14.55B | 148G | current stage-1 |
 | Korean statutes/local ordinances raw full | 308.9M | 1.2G | prepared for later stages |
 | Korean administrative rules + precedents raw full | 271.7M | 1.1G | prepared for later stages |
+| Korean legal/admin full task data | 629.0M | 2.5G | uploaded to prepared dataset repo |
 | Korean Wikipedia raw full | 462.5M | 1.8G | prepared for later stages |
 | HF extra reasoning/agent/mm subset | 112.6M | 444M | prepared, limited weight |
 | Local terminal conversations | 9.39B | 36G | prepared for terminal-heavy later stages |
 | SWE-ZERO prepared | 182.7M | 720M | pretraining and later SFT |
 | GLM reasoning prepared | 68.5M | 282M | pretraining and later SFT |
 
-Major source groups:
+Major source groups and provenance:
 
-- Upstream HRM-Text cleaned pretraining data from `sapientinc/HRM-Text-data-io-cleaned-20260515`
-- Korean Wikipedia
-- Korean statutes, local ordinances, administrative rules, and precedent corpora
-- ToolBench train trajectories and tool-use instructions
-- Local terminal/code/math conversations
-- SWE-ZERO terminal/code trajectories
-- GLM reasoning samples
-- Small, reviewed subsets of extra reasoning/agent datasets
+| Source group | Origin | Prepared dataset usage |
+|---|---|---|
+| HRM-Text cleaned pretraining data | https://huggingface.co/datasets/sapientinc/HRM-Text-data-io-cleaned-20260515 | `hrm_cleaned_base_sample_v1`, `koterm_hrm_cleaned_fastcap_stage1_v1`; full no-cap retokenization is still running |
+| Korean Wikipedia | https://dumps.wikimedia.org/kowiki/20260501/ | `kowiki_raw_full_v1` |
+| Korean statutes | https://github.com/legalize-kr/legalize-kr | `korean_legal_raw_full_v1`, `sft_korean_legal_v1`, `korean_legal_tasks_full_v1` |
+| Korean local ordinances | https://github.com/legalize-kr/ordinance-kr | `korean_legal_raw_full_v1`, `sft_korean_legal_v1`, `korean_legal_tasks_full_v1` |
+| Korean administrative rules | local Markdown snapshot at `admrule-kr/` | `korean_admrule_precedent_raw_full_v1`, `korean_legal_tasks_full_v1` |
+| Korean precedents | local Markdown snapshot at `precedent-kr/` | `korean_admrule_precedent_raw_full_v1`, `korean_legal_tasks_full_v1` |
+| ToolBench train data | local extraction under `data_toolbench/data/`; eval split excluded | `sft_toolbench_v1` |
+| SWE-ZERO trajectories | https://huggingface.co/datasets/AlienKevin/SWE-ZERO-12M-trajectories | `sft_swe_zero_v1`, `sft_swe_glm_mix_v1` |
+| GLM reasoning | https://huggingface.co/datasets/Jackrong/GLM-5.1-Reasoning-1M-Cleaned | `sft_glm_reasoning_v1`, `sft_swe_glm_mix_v1` |
+| Claude reasoning sample | https://huggingface.co/datasets/angrygiraffe/claude-opus-4.6-4.7-reasoning-8.7k | small reviewed reasoning subset inside `hf_extra_reasoning_agent_mm_v1` |
+| Open-MM-RL text subset | https://huggingface.co/datasets/TuringEnterprises/Open-MM-RL | text-only reviewed subset inside `hf_extra_reasoning_agent_mm_v1` |
+| DeepSeek agent traces | https://huggingface.co/datasets/TeichAI/DeepSeek-v4-Pro-Agent | limited agent/tool-use subset; license-sensitive |
+| structured Wikipedia | https://huggingface.co/datasets/wikimedia/structured-wikipedia | tokenizer/general text support |
+| Local terminal/code/math conversations | local `swe`, `code`, and `math` parquet conversations | `local_terminal_conversations_ctx9k_resp6k_v1` |
+
+The full Korean legal/admin task upload is present in the dataset repository at:
+
+- `korean_legal_tasks_full_v1/`
+- `raw_jsonl/korean_legal_tasks_full_20260524.jsonl`
+- `LEGAL_FULL_TASKS_README.md`
 
 Evaluation-like data is excluded from training where identified, including ToolBench eval, Terminal Bench 2 style data, and benchmark-oriented `chi-bench` data.
+
+Licenses and terms remain those of the original sources. The prepared dataset upload does not relicense upstream content.
 
 ## Training Run
 
@@ -227,4 +249,3 @@ This work builds on the HRM-Text architecture and training stack:
 
 - Paper: https://arxiv.org/html/2605.20613
 - Upstream code: https://github.com/sapientinc/HRM-Text
-
