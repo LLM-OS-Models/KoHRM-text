@@ -249,18 +249,23 @@ SFT에서는 특히 다음을 강제합니다.
 | GLM V1Dataset 전처리 | 완료 |
 | SWE+GLM B pilot | 완료 |
 | HRM 328G cleaned 데이터 확인 | 완료 |
-| HRM 328G 새 tokenizer 재패킹 | 진행 필요 |
-| 한국어 위키/법률/판례 task 변환 | 진행 필요 |
-| ToolBench task 변환 | 진행 필요 |
-| terminal dataset 변환 | 진행 필요 |
-| 최종 balanced pretraining dataset merge | 진행 필요 |
+| HRM 328G 새 tokenizer 재토큰화 | 진행 중, metadata 5221개 및 tokenized root 약 387G 생성 |
+| HRM 328G full/no-cap V1Dataset 패킹 | 재토큰화 종료 후 예약 |
+| 한국어 위키 원문 full 변환 | 완료, 462.5M tokens |
+| 한국어 법령/자치법규 원문 full 변환 | 완료, 308.9M tokens |
+| 한국어 행정규칙/판례 원문 full 변환 | 완료, 271.7M tokens |
+| 한국어 법률/조례/행정규칙/판례 task full nocap | 생성/전처리 예약 |
+| ToolBench task 변환 | 완료, train split 127.0M tokens |
+| terminal dataset 변환 | 완료, local terminal 9.39B tokens |
+| prepared dataset HF 업로드 | 진행 중 |
+| 최종 balanced pretraining dataset merge | full HRM/legal 산출 후 진행 |
 
 ## 다음 실행 순서
 
-1. HRM cleaned 328G의 JSONL/parquet를 새 tokenizer로 재토큰화합니다.
-2. `flan`은 파일/task cap을 둬서 271GiB가 전체를 지배하지 않게 합니다.
-3. 한국어 위키/법률/조례/행정규칙/판례를 instruction-response task로 변환합니다.
-4. ToolBench train과 local terminal dataset을 tool/terminal SFT 형식으로 변환합니다.
-5. SWE/GLM prepared dataset까지 모두 merge해서 balanced pretraining dataset을 만듭니다.
-6. H200 8장으로 L 또는 XL batch probe를 돌려 최대 global batch를 찾습니다.
-7. 안정 batch 확인 후 장기 pretraining을 시작하고, checkpoint는 너무 자주 올리지 않고 의미 있는 간격으로 Hugging Face에 업로드합니다.
+1. 진행 중인 HRM cleaned 328G no-cap 재토큰화를 완료합니다.
+2. HRM full/no-cap tokenized root를 V1Dataset으로 패킹합니다.
+3. 한국어 법률/조례/행정규칙/판례 task full nocap을 생성하고 V1Dataset으로 전처리합니다.
+4. 완료된 prepared dataset을 HF dataset repo에 순차 업로드합니다.
+5. stage-1 fast-cap 학습이 끝나면 이미 끝난 terminal/legal/wiki/tool/SFT 데이터를 이어 학습하고, HRM full/no-cap 산출물이 준비되면 다음 stage로 붙입니다.
+6. 최종 balanced pretraining dataset은 HRM general, 한국어 일반/법률, 코드/터미널, tool-call 비중을 다시 맞춰 병합합니다.
+7. checkpoint는 너무 자주 올리지 않고, main HF model repo에는 최신 `safetensors` 모델만 유지합니다.

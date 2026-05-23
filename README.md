@@ -29,13 +29,16 @@
 
 | 문서 | 내용 |
 |---|---|
-| `PRETRAINING_SFT_DATA_MIX_2026-05-23.md` | 사전학습/SFT 데이터 구성, 비중, 제외 기준 |
-| `TRAINING_PLAN_2026-05-23.md` | 전체 학습 전략, tokenizer, 실행 정책 |
-| `STAGED_TRAINING_RUNBOOK_2026-05-23.md` | 완료된 전처리 데이터부터 학습하고 새 데이터가 생기면 이어 학습하는 실행 절차 |
-| `MODEL_CARD_KoHRM-Text-1.4B.md` | HF model card 초안 |
-| `AVAILABLE_DATA.md` | 로컬 데이터 인벤토리와 용량 |
-| `PROGRESS_2026-05-23.md` | 실제 진행 로그 |
-| `UPSTREAM_README.md` | 원본 HRM-Text README |
+| [PRETRAINING_SFT_DATA_MIX_2026-05-23.md](PRETRAINING_SFT_DATA_MIX_2026-05-23.md) | 사전학습/SFT 데이터 구성, 비중, 제외 기준 |
+| [TRAINING_PLAN_2026-05-23.md](TRAINING_PLAN_2026-05-23.md) | 전체 학습 전략, tokenizer, 실행 정책 |
+| [STAGED_TRAINING_RUNBOOK_2026-05-23.md](STAGED_TRAINING_RUNBOOK_2026-05-23.md) | 완료된 전처리 데이터부터 학습하고 새 데이터가 생기면 이어 학습하는 실행 절차 |
+| [MODEL_CARD_KoHRM-Text-1.4B.md](MODEL_CARD_KoHRM-Text-1.4B.md) | HF model card 초안 |
+| [HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md](HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md) | HF prepared dataset card 초안 |
+| [METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md) | HRM-Text 논문 방식, PrefixLM, 아키텍처 적용 방식 |
+| [VRAM_OOM_NOTES_2026-05-24.md](VRAM_OOM_NOTES_2026-05-24.md) | VRAM 증가/OOM 원인과 batch 정책 |
+| [AVAILABLE_DATA.md](AVAILABLE_DATA.md) | 로컬 데이터 인벤토리와 용량 |
+| [PROGRESS_2026-05-23.md](PROGRESS_2026-05-23.md) | 실제 진행 로그 |
+| [UPSTREAM_README.md](UPSTREAM_README.md) | 원본 HRM-Text README |
 
 ## 새 토크나이저
 
@@ -76,7 +79,8 @@
 | 한국어 위키백과 원문 full | 전처리 완료 | 462.5M |
 | HF extra reasoning/agent/mm | 전처리 완료 | 112.6M |
 | local terminal `swe/code/math` | 최적화 JSONL + V1Dataset 완료 | 9.39B |
-| HRM cleaned 328G full nocap | 새 tokenizer 재토큰화 진행 중 | 산출 후 산정 |
+| HRM cleaned 328G full nocap | 새 tokenizer 재토큰화 거의 완료, V1Dataset 패킹 예약 | 산출 후 산정 |
+| 한국어 법률/조례/행정규칙/판례 task full nocap | 생성/전처리 예약 | 산출 후 산정 |
 
 주요 경로:
 
@@ -95,6 +99,14 @@
 ```
 
 현재 stage-1의 14.55B tokens는 최종 40B 목표가 아니라 GPU를 먼저 계속 쓰기 위한 fast-cap stage입니다. 기존 HRM cleaned 328G 원본은 새 tokenizer로 cap 없이 다시 처리해야 하며, 현재는 fast-cap tokenized root를 재활용해 uncapped 산출물로 확장하는 방식으로 진행합니다. 완료 후 sampling/merge해서 다음 stage에서 이어 학습합니다.
+
+prepared dataset 공개용 업로드도 병렬로 진행합니다.
+
+| 항목 | 값 |
+|---|---|
+| HF prepared dataset repo | `https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-prepared-data` |
+| 현재 업로드 | 완료된 V1Dataset 14개와 tokenizer/docs |
+| 후속 업로드 예약 | uncapped 한국어 법률 task full, HRM cleaned 328G full/no-cap V1Dataset |
 
 `koterm_pretrain_mix_v1` 구성:
 
@@ -174,7 +186,9 @@ taskset -c 0-31 torchrun --standalone --nproc_per_node=8 pretrain.py \
 | VRAM | GPU0 약 129.9GB, 나머지 약 127.6GB |
 | GPU utilization | 8장 모두 99% |
 | 속도 | 약 1.02 step/sec |
-| ETA | 약 19시간 내외 |
+| ETA | 약 15~16시간 내외 |
+
+2026-05-24 기준 stage-1은 약 34% 지점까지 정상 진행 중입니다. prepared-data HF 업로드는 대용량 `koterm_hrm_cleaned_fastcap_stage1_v1/tokens.npy` 파일 업로드가 진행 중이며, 후속 전처리 예약 스크립트가 legal full task와 HRM full/no-cap 패킹/업로드를 순서대로 처리합니다.
 
 stage0b checkpoint는 HF `LLM-OS-Models/KoHRM-Text-1.4B`에 `model.safetensors` 안전 포맷으로 변환해 업로드했습니다. HF unsafe scan 경고를 만들던 raw `.distcp`/`.metadata` 파일은 메인 repo에서 삭제했습니다. raw FSDP2 checkpoint는 optimizer/EMA resume 용도이므로 별도 raw checkpoint repo로 분리합니다.
 

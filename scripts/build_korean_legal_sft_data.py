@@ -147,7 +147,7 @@ def make_rows(path: Path, root_name: str, text: str):
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--output", required=True)
-    ap.add_argument("--max-output-mib", type=int, default=512)
+    ap.add_argument("--max-output-mib", type=int, default=512, help="0 means no output cap.")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument(
         "--root",
@@ -178,7 +178,7 @@ def main() -> None:
 
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
-    max_bytes = args.max_output_mib * 1024 * 1024
+    max_bytes = None if args.max_output_mib <= 0 else args.max_output_mib * 1024 * 1024
     rows = 0
     bytes_written = 0
     by_source: dict[str, int] = {}
@@ -198,7 +198,7 @@ def main() -> None:
                 }
                 line = json.dumps(row, ensure_ascii=False) + "\n"
                 encoded = line.encode("utf-8")
-                if bytes_written + len(encoded) > max_bytes:
+                if max_bytes is not None and bytes_written + len(encoded) > max_bytes:
                     print(f"wrote {rows:,} rows, {bytes_written:,} bytes to {out}")
                     print(json.dumps(by_source, ensure_ascii=False, indent=2))
                     return

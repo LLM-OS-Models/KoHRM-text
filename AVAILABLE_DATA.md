@@ -343,8 +343,39 @@ print(f"EN char/token: {len(english_text) / len(enc.tokens):.2f}")  # 3.0+
 
 - tokenizer: `https://huggingface.co/LLM-OS-Models/HRM-Text-Ko-Terminal-Tokenizer-131K`
 - raw FSDP2 pilot checkpoint: `https://huggingface.co/LLM-OS-Models/HRM-Text-Ko-Terminal-B-SWE-GLM-Pilot`
+- current model repo: `https://huggingface.co/LLM-OS-Models/KoHRM-Text-1.4B`
+- prepared dataset repo: `https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-prepared-data`
 
 주의:
 
 - 현재 mix는 token 기준 SWE terminal/code가 약 72.7%라, terminal smoke에는 좋지만 최종 한국어 모델용 비중으로는 과하다.
 - 장기 학습 전 한국어 일반 instruction, 한국어 법률/행정/판례 task, tool-call/JSON task를 추가해 비중을 조정해야 한다.
+
+## 9. 2026-05-24 전처리/업로드 현황
+
+완료된 prepared dataset:
+
+| dataset | tokens | size |
+|---|---:|---:|
+| `koterm_hrm_cleaned_fastcap_stage1_v1` | 14.55B | 148G |
+| `local_terminal_conversations_ctx9k_resp6k_v1` | 9.39B | 36G |
+| `koterm_pretrain_mix_v1` | 711.3M | 2.8G |
+| `kowiki_raw_full_v1` | 462.5M | 1.8G |
+| `korean_legal_raw_full_v1` | 308.9M | 1.2G |
+| `korean_admrule_precedent_raw_full_v1` | 271.7M | 1.1G |
+| `hrm_cleaned_base_sample_v1` | 250.0M | 994M |
+| `sft_swe_glm_mix_v1` | 251.2M | 990M |
+| `sft_swe_zero_v1` | 182.7M | 720M |
+| `sft_toolbench_v1` | 127.0M | 500M |
+| `hf_extra_reasoning_agent_mm_v1` | 112.6M | 444M |
+| `sft_korean_legal_v1` | 83.1M | 336M |
+| `sft_glm_reasoning_v1` | 68.5M | 282M |
+
+진행/예약:
+
+| 항목 | 상태 |
+|---|---|
+| HRM 328G cleaned full/no-cap 재토큰화 | 진행 중, tokenized root 약 387G, metadata 5221개 생성 |
+| HRM full/no-cap V1Dataset 패킹 | 재토큰화 종료 후 `koterm_hrm_cleaned_full_nocap_v1`로 예약 |
+| 한국어 법률/조례/행정규칙/판례 task full nocap | 생성 및 V1Dataset 전처리 예약 |
+| prepared dataset HF 업로드 | 진행 중, 완료 산출물 14개와 tokenizer/docs 업로드 대상 |

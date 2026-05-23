@@ -115,6 +115,17 @@ Important special tokens:
 
 `smoke_hrm_parquet_v1` is a local smoke-test dataset and is intentionally not part of the main upload unless explicitly needed.
 
+## Scheduled Follow-Up Uploads
+
+The first public prepared-data upload contains the completed datasets listed above. Two large follow-up additions are scheduled from the KoHRM training machine:
+
+| Folder | Status | Description |
+|---|---|---|
+| `korean_legal_tasks_full_v1` | scheduled/running | Uncapped task-style Korean legal/admin data generated from statutes, local ordinances, administrative rules, and precedents |
+| `koterm_hrm_cleaned_full_nocap_v1` | waiting for tokenizer finish | Full/no-cap retokenized upstream HRM 328G cleaned corpus packed as HRM-Text V1Dataset |
+
+These follow-up uploads use the same KoHRM 131K tokenizer and the same HRM-Text PrefixLM response-only training layout.
+
 ## Source Attribution
 
 Major sources used while constructing these prepared datasets:
@@ -145,6 +156,7 @@ These prepared datasets are used in staged pretraining:
 2. `koterm_hrm_cleaned_fastcap_stage1_v1` for the current stage-1 run.
 3. Korean raw full, Wikipedia, terminal, SWE, ToolBench, and extra reasoning datasets for later mixed stages.
 4. Full no-cap retokenization of the upstream HRM 328G cleaned corpus is still in progress and will be added as a later dataset when complete.
+5. The uncapped Korean legal/admin task dataset is generated as a follow-up so the raw legal corpus and task-style legal corpus are both available.
 
 SFT-style datasets are also used during pretraining first. A cleaner, more strongly weighted SFT pass is planned after the pretraining continuation.
 
@@ -168,4 +180,3 @@ pip install -r requirements.txt
 ```
 
 The important scripts are in `scripts/`, especially the SFT/V1Dataset preparation scripts, Korean corpus builders, terminal conversation builders, merge scripts, and HRM retokenization runbooks documented in the repository.
-
