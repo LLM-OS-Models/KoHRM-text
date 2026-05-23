@@ -72,6 +72,10 @@
 | ToolBench train tool-call task | 전처리 완료 | 127.0M |
 | `koterm_pretrain_mix_v1` | 병합 완료 | 711.3M |
 | HRM cleaned fast-cap stage-1 | V1Dataset 생성 완료 | 14.55B |
+| 행정규칙+판례 원문 full | 전처리 완료 | 271.7M |
+| 한국어 위키백과 원문 full | 전처리 완료 | 462.5M |
+| HF extra reasoning/agent/mm | 전처리 완료 | 112.6M |
+| local terminal `swe/code/math` | 최적화 JSONL + V1Dataset 완료 | 9.39B |
 | HRM cleaned 328G full nocap | 새 tokenizer 재토큰화 진행 중 | 산출 후 산정 |
 
 주요 경로:
@@ -84,9 +88,13 @@
 /home/work/.data/hrm_text_prepared/sft_toolbench_v1
 /home/work/.data/hrm_text_prepared/koterm_pretrain_mix_v1
 /home/work/.data/hrm_text_prepared/koterm_hrm_cleaned_fastcap_stage1_v1
+/home/work/.data/hrm_text_prepared/korean_admrule_precedent_raw_full_v1
+/home/work/.data/hrm_text_prepared/kowiki_raw_full_v1
+/home/work/.data/hrm_text_prepared/hf_extra_reasoning_agent_mm_v1
+/home/work/.data/hrm_text_prepared/local_terminal_conversations_ctx9k_resp6k_v1
 ```
 
-현재 stage-1의 14.55B tokens는 최종 40B 목표가 아니라 GPU를 먼저 계속 쓰기 위한 fast-cap stage입니다. 기존 HRM cleaned 328G 원본은 `/home/work/.data/hrm_text_tokenized/koterm_hrm_cleaned_full_nocap_v1`로 cap 없이 재토큰화 중이며, 완료 후 sampling/merge해서 다음 stage에서 이어 학습합니다.
+현재 stage-1의 14.55B tokens는 최종 40B 목표가 아니라 GPU를 먼저 계속 쓰기 위한 fast-cap stage입니다. 기존 HRM cleaned 328G 원본은 새 tokenizer로 cap 없이 다시 처리해야 하며, 현재는 fast-cap tokenized root를 재활용해 uncapped 산출물로 확장하는 방식으로 진행합니다. 완료 후 sampling/merge해서 다음 stage에서 이어 학습합니다.
 
 `koterm_pretrain_mix_v1` 구성:
 
@@ -143,29 +151,30 @@ taskset -c 0-31 torchrun --standalone --nproc_per_node=8 pretrain.py \
   arch/size@arch=XL \
   data.path=/home/work/.data/hrm_text_prepared/koterm_hrm_cleaned_fastcap_stage1_v1 \
   resume_from=/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage0b-debug-launch2 \
-  +checkpoint_path=/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs229 \
+  +checkpoint_path=/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs180 \
   +project_name=KoHRM-Text \
-  +run_name=KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs229 \
+  +run_name=KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs180 \
   epochs=1 \
-  global_batch_size=229376 \
+  global_batch_size=180224 \
   lr_warmup_steps=2000 \
   resume_step_offset=7765 \
-  total_steps_override=71220 \
+  total_steps_override=88522 \
+  checkpoint_step_interval=5000 \
   checkpoint_interval=1
 ```
 
-`global_batch_size=262144`는 초반에는 동작했지만, 후속 compile graph에서 `32768 x 131072` bf16 logits buffer 추가 할당이 필요해 OOM이 발생했습니다. 현재 stage-1은 `global_batch_size=229376`으로 재시작해 정상 진행 중입니다.
+`global_batch_size=262144`와 `229376`은 초반에는 동작했지만, 후속 graph/cache 확장에서 추가 VRAM이 필요해 OOM 위험이 컸습니다. 현재 stage-1은 `global_batch_size=180224`로 재시작해 정상 진행 중입니다.
 
 현재 stage-1 관측값:
 
 | 항목 | 값 |
 |---|---:|
-| global batch | 229,376 tokens |
-| local token slots/GPU | 28,672 |
-| VRAM | GPU0 약 105GB, 나머지 약 103GB |
+| global batch | 180,224 tokens |
+| local token slots/GPU | 22,528 |
+| VRAM | GPU0 약 129.9GB, 나머지 약 127.6GB |
 | GPU utilization | 8장 모두 99% |
-| 속도 | 약 1.02-1.03 step/sec |
-| ETA | 약 17시간 |
+| 속도 | 약 1.02 step/sec |
+| ETA | 약 19시간 내외 |
 
 stage0b checkpoint는 HF `LLM-OS-Models/KoHRM-Text-1.4B`에 `model.safetensors` 안전 포맷으로 변환해 업로드했습니다. HF unsafe scan 경고를 만들던 raw `.distcp`/`.metadata` 파일은 메인 repo에서 삭제했습니다. raw FSDP2 checkpoint는 optimizer/EMA resume 용도이므로 별도 raw checkpoint repo로 분리합니다.
 
@@ -187,6 +196,6 @@ stage0b checkpoint는 HF `LLM-OS-Models/KoHRM-Text-1.4B`에 `model.safetensors` 
 
 1. 현재 stage-1 학습을 완료하고 checkpoint를 저장합니다.
 2. 메인 HF repo에는 `safetensors` 변환본을 올리고, raw FSDP2 checkpoint는 별도 raw checkpoint repo에 올립니다.
-3. local terminal dataset `swe/math/code.parquet`를 V1Dataset으로 변환해 stage-2에 추가합니다.
-4. full training용 45B~52B token mix를 확정한 뒤 장기 pretraining을 이어갑니다.
+3. local terminal dataset `swe/math/code.parquet`의 optimized V1Dataset 9.39B tokens를 stage-2에 추가합니다.
+4. HRM cleaned 328G no-cap 재토큰화를 완료하고 full training용 45B~52B token mix를 확정합니다.
 5. 최종 checkpoint를 선택하면 `conversion/convert_to_hf.py`로 model-only artifact를 따로 변환합니다.

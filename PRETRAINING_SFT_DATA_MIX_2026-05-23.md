@@ -110,6 +110,8 @@ Tokenizer corpus 목표 비중:
 | 행정규칙 | `admrule-kr/` | 523M | 사용 |
 | 판례 | `precedent-kr/` | 3.0G | 사용 |
 | 법령/자치법규 원문 V1Dataset | `/home/work/.data/hrm_text_prepared/korean_legal_raw_full_v1` | 308.9M tokens | 완료, 다음 stage 포함 |
+| 행정규칙+판례 원문 V1Dataset | `/home/work/.data/hrm_text_prepared/korean_admrule_precedent_raw_full_v1` | 271.7M tokens | 완료, 다음 stage 포함 |
+| 한국어 위키 원문 V1Dataset | `/home/work/.data/hrm_text_prepared/kowiki_raw_full_v1` | 462.5M tokens | 완료, 다음 stage 포함 |
 
 처리 방식:
 
@@ -126,6 +128,7 @@ Tokenizer corpus 목표 비중:
 | local terminal dataset | `dataset/` | 5.0G | 사용 |
 | SWE-ZERO sample | `/home/work/.data/huggingface/hrm_text_extra/sft/swe_zero_terminal_sft_sample.jsonl` | 1.0G, 53,868 rows | 사용 |
 | SWE-ZERO prepared | `/home/work/.data/hrm_text_prepared/sft_swe_zero_v1` | 182.7M tokens | 이미 사용 가능 |
+| local terminal optimized JSONL | `/home/work/.data/huggingface/hrm_text_extra/sft/local_terminal_conversations_ctx9k_resp6k_20260524.jsonl` | 2,739,207 examples, 33.95GB | V1Dataset 완료 |
 
 처리 방식:
 
@@ -143,6 +146,7 @@ Tokenizer corpus 목표 비중:
 | ToolBench instruction queries | `HRM-Text/data_toolbench/data/instruction/*.json` | 약 1.6G | 사용 |
 | ToolBench eval | `HRM-Text/data_toolbench/data/toolllama_G123_dfs_eval.json` | 7.6M | 학습 제외 |
 | DeepSeek-v4-Pro-Agent partial | `/home/work/.data/huggingface/hrm_text_extra/raw/TeichAI__DeepSeek-v4-Pro-Agent/` | raw 일부, extra raw 전체 506M 안에 포함 | 제한 사용 |
+| DeepSeek-v4-Pro-Agent prepared subset | `/home/work/.data/hrm_text_prepared/hf_extra_reasoning_agent_mm_v1` | 112.6M tokens 중 일부 | 완료, 제한 비중 사용 |
 
 처리 방식:
 
@@ -157,7 +161,8 @@ Tokenizer corpus 목표 비중:
 |---|---|---:|---|
 | GLM-5.1 Reasoning sample | `/home/work/.data/huggingface/hrm_text_extra/sft/glm_5_1_reasoning_sft_sample.jsonl` | 1.0G, 57,916 rows | 사용 |
 | GLM prepared | `/home/work/.data/hrm_text_prepared/sft_glm_reasoning_v1` | 68.5M tokens | 이미 사용 가능 |
-| Claude Opus 4.6/4.7 reasoning | `/home/work/.data/huggingface/hrm_text_extra/raw/angrygiraffe__claude-opus-4.6-4.7-reasoning-8.7k/` | 약 240M급 파일 묶음 | 사용 |
+| Claude Opus 4.6/4.7 reasoning | `/home/work/.data/huggingface/hrm_text_extra/raw/angrygiraffe__claude-opus-4.6-4.7-reasoning-8.7k/` | 약 240M급 파일 묶음 | `full_train`만 사용, no-reasoning 파생본은 중복 제외 |
+| Claude/DeepSeek/Open-MM-RL prepared | `/home/work/.data/hrm_text_prepared/hf_extra_reasoning_agent_mm_v1` | 38,312 samples / 112.6M tokens | 완료 |
 | structured-wikipedia EN sample | `/home/work/.data/huggingface/hrm_text_extra/tokenizer_corpus/structured_wikipedia_en_sample.jsonl` | 256M, 18,070 rows | 낮은 비중 사용 |
 
 처리 방식:
@@ -174,6 +179,11 @@ Tokenizer corpus 목표 비중:
 | SWE-ZERO | `/home/work/.data/hrm_text_prepared/sft_swe_zero_v1` | 53,868 samples / 182.7M tokens | 사용 가능 |
 | GLM reasoning | `/home/work/.data/hrm_text_prepared/sft_glm_reasoning_v1` | 56,021 samples / 68.5M tokens | 사용 가능 |
 | SWE+GLM pilot mix | `/home/work/.data/hrm_text_prepared/sft_swe_glm_mix_v1` | 109,889 samples / 251.2M tokens | pilot 완료 |
+| 법령/자치법규 원문 | `/home/work/.data/hrm_text_prepared/korean_legal_raw_full_v1` | 227,788 samples / 308.9M tokens | 사용 가능 |
+| 행정규칙+판례 원문 | `/home/work/.data/hrm_text_prepared/korean_admrule_precedent_raw_full_v1` | 203,515 samples / 271.7M tokens | 사용 가능 |
+| 한국어 위키 원문 | `/home/work/.data/hrm_text_prepared/kowiki_raw_full_v1` | 611,684 samples / 462.5M tokens | 사용 가능 |
+| HF extra reasoning/agent/mm | `/home/work/.data/hrm_text_prepared/hf_extra_reasoning_agent_mm_v1` | 38,312 samples / 112.6M tokens | 사용 가능 |
+| local terminal optimized | `/home/work/.data/hrm_text_prepared/local_terminal_conversations_ctx9k_resp6k_v1` | 2,739,207 samples / 9.39B tokens | 사용 가능 |
 
 이 prepared dataset들은 모두 사전학습 mix에 포함합니다. 단, 최종 장기 학습에서는 HRM 328G, 한국어, ToolBench, terminal dataset까지 포함한 새 balanced dataset으로 다시 merge합니다.
 
