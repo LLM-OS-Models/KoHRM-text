@@ -23,6 +23,9 @@ ema: 0.9999
 
 resume_from: null
 resume_epoch: null
+resume_step: null
 weights_only_resume_from_ema: false
 resume_step_offset: 0
 total_steps_override: null
+skip_batches: 0
+checkpoint_step_interval: null

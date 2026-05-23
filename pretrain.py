@@ -4,6 +4,7 @@ from pathlib import Path
 from glob import glob
 import math
 import os
+import json
 import yaml
 import shutil
 
@@ -71,13 +72,16 @@ class PretrainConfig(pydantic.BaseModel):
     # Resume / fine-tune from checkpoint
     resume_from: Optional[str] = None
     resume_epoch: Optional[int] = None
+    resume_step: Optional[int] = None
     weights_only_resume_from_ema: bool = False  # Swap EMA into model + reset optim
     resume_step_offset: int = 0  # Global step offset for staged pretraining LR continuity.
     total_steps_override: Optional[int] = None  # Planned total global steps across stages.
+    skip_batches: int = 0  # Skip dataset batches when resuming inside an epoch.
 
     # Extras
     seed: int = 0
     checkpoint_interval: int = 1
+    checkpoint_step_interval: Optional[int] = None
     log_interval: int = 5
 
 
@@ -102,6 +106,7 @@ def create_dataloader(config: PretrainConfig, local_batch_size: int, drop_last_b
         target_only=config.data.target_only,
 
         batch_max_length=local_batch_size,
+        skip_batches=config.skip_batches,
         rank=rank,
         num_replicas=world_size,
     ))
@@ -241,14 +246,18 @@ def load_checkpoint(config: PretrainConfig, train_state: TrainState):
     if config.resume_from is None:
         return
 
-    epoch = config.resume_epoch
-    if epoch is None:
-        ckpt_files = glob(os.path.join(config.resume_from, "fsdp2_epoch_*"))
-        if not ckpt_files:
-            raise FileNotFoundError(f"No checkpoint found in {config.resume_from}")
-        epoch = max(int(Path(f).stem.split("_")[-1]) for f in ckpt_files)
+    if config.resume_step is not None:
+        checkpoint_id = os.path.join(config.resume_from, f"fsdp2_step_{config.resume_step}")
+    else:
+        epoch = config.resume_epoch
+        if epoch is None:
+            ckpt_files = glob(os.path.join(config.resume_from, "fsdp2_epoch_*"))
+            if not ckpt_files:
+                raise FileNotFoundError(f"No checkpoint found in {config.resume_from}")
+            epoch = max(int(Path(f).stem.split("_")[-1]) for f in ckpt_files)
 
-    checkpoint_id = os.path.join(config.resume_from, f"fsdp2_epoch_{epoch}")
+        checkpoint_id = os.path.join(config.resume_from, f"fsdp2_epoch_{epoch}")
+
     print(f"[Resume] Loading model + optimizer from {checkpoint_id}")
     optim_state = get_optimizer_state_dict(train_state.model, train_state.optim)
     dcp.load(
@@ -272,6 +281,27 @@ def load_checkpoint(config: PretrainConfig, train_state: TrainState):
 
     print(f"[Resume] Done.")
 
+
+def save_training_checkpoint(config: PretrainConfig, train_state: TrainState, rank: int, tag: str):
+    if config.checkpoint_path is None:
+        return
+    checkpoint_id = os.path.join(config.checkpoint_path, f"fsdp2_{tag}")
+    dcp.save({"model": train_state.model.state_dict(), "optim": get_optimizer_state_dict(train_state.model, train_state.optim)},  # pyright: ignore[reportPrivateImportUsage]
+             checkpoint_id=checkpoint_id)
+    torch.save(train_state.carry, os.path.join(config.checkpoint_path, f"carry_{tag}.{rank}.pt"))
+    if rank == 0:
+        step_info = {
+            "tag": tag,
+            "global_step": train_state.step,
+            "stage_start_step": config.resume_step_offset,
+            "skip_batches_hint": max(0, train_state.step - config.resume_step_offset),
+            "data_path": config.data.path,
+            "global_batch_size": config.global_batch_size,
+        }
+        with open(os.path.join(config.checkpoint_path, f"{tag}_info.json"), "wt") as f:
+            json.dump(step_info, f, indent=2)
+        with open(os.path.join(config.checkpoint_path, "latest_checkpoint.txt"), "wt") as f:
+            f.write(f"{tag}\n")
 
 def save_code_and_config(config: PretrainConfig, train_metadata: V1DatasetMeta):
     if config.checkpoint_path is None or wandb.run is None:
@@ -377,16 +407,14 @@ def launch(hydra_config: DictConfig):
 
             del metrics
 
+            if config.checkpoint_step_interval is not None and train_state.step % config.checkpoint_step_interval == 0:
+                save_training_checkpoint(config, train_state, RANK, f"step_{train_state.step}")
+
         ############ EVAL STACK: TBD TODO
 
         ############ Checkpointing
         if (epoch % config.checkpoint_interval == 0) or (epoch == config.epochs):
-            if config.checkpoint_path is not None:
-                # Save checkpoint
-                dcp.save({"model": train_state.model.state_dict(), "optim": get_optimizer_state_dict(train_state.model, train_state.optim)},  # pyright: ignore[reportPrivateImportUsage]
-                         checkpoint_id=os.path.join(config.checkpoint_path, f"fsdp2_epoch_{epoch}"))
-                # Save carry on all ranks
-                torch.save(train_state.carry, os.path.join(config.checkpoint_path, f"carry_epoch_{epoch}.{RANK}.pt"))
+            save_training_checkpoint(config, train_state, RANK, f"epoch_{epoch}")
 
     # finalize
     if dist.is_initialized():

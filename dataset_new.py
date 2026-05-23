@@ -20,6 +20,7 @@ class V1DatasetConfig(pydantic.BaseModel):
     dataset_path: str
     batch_max_length: int
     drop_last_batch: bool
+    skip_batches: int = 0
 
     target_only: bool
 
@@ -141,5 +142,7 @@ class V1Dataset(IterableDataset):
         self._load_dataset_before_epoch_begin()
 
         assert self._sampler is not None
-        for indices in self._sampler.iter():
+        for batch_idx, indices in enumerate(self._sampler.iter()):
+            if batch_idx < self.config.skip_batches:
+                continue
             yield self._load_batch(indices)

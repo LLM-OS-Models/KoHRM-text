@@ -10,7 +10,7 @@ SFT 후보 데이터도 사전학습에 모두 넣습니다. 여기서 말하는
 
 SFT는 그 뒤에 한 번 더 합니다. 같은 계열의 데이터를 다시 쓰되, SFT 단계에서는 품질이 높은 subset, 포맷이 엄격한 tool-call/terminal trajectory, 한국어 응답 스타일, 실패 복구 루프를 더 강하게 가중합니다.
 
-현재 완료된 B pilot은 최종 mix가 아닙니다. pilot에는 `/home/work/.data/hrm_text_prepared/sft_swe_glm_mix_v1`만 들어갔고, HRM 기존 328G cleaned pretraining 데이터는 아직 실제 학습 입력으로 쓰지 않았습니다. 앞으로는 기존 HRM cleaned 328G를 기본 축으로 반드시 포함합니다.
+현재 완료된 B pilot과 stage-1 fast-cap은 최종 mix가 아닙니다. stage-1의 14.55B tokens는 GPU를 먼저 놀리지 않기 위한 중간 stage이고, HRM 기존 328G cleaned pretraining 데이터는 cap 없는 full 재토큰화 산출물을 별도 stage로 반드시 이어서 넣습니다.
 
 ## 토크나이저
 
@@ -109,6 +109,7 @@ Tokenizer corpus 목표 비중:
 | 한국 조례 | `HRM-Text/ordinance-kr/` | 3.2G | 사용 |
 | 행정규칙 | `admrule-kr/` | 523M | 사용 |
 | 판례 | `precedent-kr/` | 3.0G | 사용 |
+| 법령/자치법규 원문 V1Dataset | `/home/work/.data/hrm_text_prepared/korean_legal_raw_full_v1` | 308.9M tokens | 완료, 다음 stage 포함 |
 
 처리 방식:
 
@@ -116,6 +117,7 @@ Tokenizer corpus 목표 비중:
 - 법령/조례/행정규칙은 조항 검색, 조항 요약, 적용 범위 설명, 용어 정의, 인용 형식 변환, 근거 추출 task로 만듭니다.
 - 판례는 `판시사항`, `판결요지`, `판례내용`을 분리해서 쟁점 요약, 결론 추출, 근거 문단 찾기, 사건 유형 분류 task로 만듭니다.
 - 법률 데이터는 한국어 문체와 장문 구조 학습에 중요하지만, 전체 모델을 법률 모델로 만들 정도로 과대가중하지 않습니다.
+- 2026-05-23에는 먼저 `legalize-kr`와 `ordinance-kr` Markdown 전체를 chunked raw response target으로 변환했습니다. 결과는 `227,788` kept rows, `308,893,496` tokens입니다. 기존 83.1M task 데이터와 별개로 원문 자체도 학습합니다.
 
 ### 3. 코드/터미널/SWE 데이터
 
@@ -252,4 +254,3 @@ SFT에서는 특히 다음을 강제합니다.
 5. SWE/GLM prepared dataset까지 모두 merge해서 balanced pretraining dataset을 만듭니다.
 6. H200 8장으로 L 또는 XL batch probe를 돌려 최대 global batch를 찾습니다.
 7. 안정 batch 확인 후 장기 pretraining을 시작하고, checkpoint는 너무 자주 올리지 않고 의미 있는 간격으로 Hugging Face에 업로드합니다.
-

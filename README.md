@@ -68,9 +68,11 @@
 | HRM cleaned base sample | 새 tokenizer로 재패킹 완료 | 250.0M |
 | SWE-ZERO + GLM pilot mix | 전처리 완료 | 251.2M |
 | 한국어 법률/조례/행정규칙/판례 task | 전처리 완료 | 83.1M |
+| 한국어 법령/자치법규 원문 full | 전처리 완료 | 308.9M |
 | ToolBench train tool-call task | 전처리 완료 | 127.0M |
 | `koterm_pretrain_mix_v1` | 병합 완료 | 711.3M |
 | HRM cleaned fast-cap stage-1 | V1Dataset 생성 완료 | 14.55B |
+| HRM cleaned 328G full nocap | 새 tokenizer 재토큰화 진행 중 | 산출 후 산정 |
 
 주요 경로:
 
@@ -78,10 +80,13 @@
 /home/work/.data/hrm_text_prepared/hrm_cleaned_base_sample_v1
 /home/work/.data/hrm_text_prepared/sft_swe_glm_mix_v1
 /home/work/.data/hrm_text_prepared/sft_korean_legal_v1
+/home/work/.data/hrm_text_prepared/korean_legal_raw_full_v1
 /home/work/.data/hrm_text_prepared/sft_toolbench_v1
 /home/work/.data/hrm_text_prepared/koterm_pretrain_mix_v1
 /home/work/.data/hrm_text_prepared/koterm_hrm_cleaned_fastcap_stage1_v1
 ```
+
+현재 stage-1의 14.55B tokens는 최종 40B 목표가 아니라 GPU를 먼저 계속 쓰기 위한 fast-cap stage입니다. 기존 HRM cleaned 328G 원본은 `/home/work/.data/hrm_text_tokenized/koterm_hrm_cleaned_full_nocap_v1`로 cap 없이 재토큰화 중이며, 완료 후 sampling/merge해서 다음 stage에서 이어 학습합니다.
 
 `koterm_pretrain_mix_v1` 구성:
 
