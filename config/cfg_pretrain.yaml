@@ -10,6 +10,7 @@ hydra:
 global_batch_size: 196608  # Batch size (tokens)
 epochs: 4
 checkpoint_interval: 1
+checkpoint_keep_last: 2
 
 lr: 2.2e-4
 lr_min_ratio: 1.0

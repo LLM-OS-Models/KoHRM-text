@@ -23,6 +23,10 @@ HRM_ROOT = Path("/home/work/.projects/LLM-OS-Models/Terminal/HRM-Text")
 DATA_ROOT = Path("/home/work/.data/hrm_text_prepared")
 CKPT_ROOT = Path("/home/work/.data/hrm_text_checkpoints")
 LOG_ROOT = Path("/home/work/.data/hrm_text_logs")
+UPLOAD_STAGE_ROOT = Path("/home/work/.data/hrm_text_hf_upload_stage")
+RAW_CHECKPOINT_REPO = "LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints"
+MODEL_REPO = "LLM-OS-Models/KoHRM-Text-1.4B"
+TOKENIZER_PATH = Path("/home/work/.data/huggingface/trained_tokenizers/hrm-ko-terminal-131k-v1")
 
 GLOBAL_BATCH = 180_224
 TOTAL_STEPS_OVERRIDE = 238_117
@@ -203,22 +207,144 @@ def train_stage(stage: dict[str, Path | str], resume_from: Path, resume_step_off
         f"total_steps_override={TOTAL_STEPS_OVERRIDE}",
         "+log_interval=5",
         "checkpoint_step_interval=10000",
+        "checkpoint_keep_last=2",
         "checkpoint_interval=1",
     ]
     run_logged(cmd, LOG_ROOT / f"KoHRM-Text-1.4B-{name}.log")
     return checkpoint_path, steps
 
 
+def checkpoint_order(checkpoint_path: Path, tag: str) -> tuple[int, int]:
+    info_path = checkpoint_path / f"{tag}_info.json"
+    if info_path.exists():
+        try:
+            info = json.loads(info_path.read_text(encoding="utf-8"))
+            return int(info.get("global_step", 0)), 1 if tag.startswith("epoch_") else 0
+        except Exception:
+            pass
+    try:
+        return int(tag.rsplit("_", 1)[-1]), 1 if tag.startswith("epoch_") else 0
+    except ValueError:
+        return 0, 0
+
+
+def stage_latest_checkpoints(checkpoint_path: Path, stage_name: str, keep_last: int = 2) -> Path:
+    tags = []
+    for path in checkpoint_path.glob("fsdp2_*"):
+        if path.is_dir():
+            tags.append(path.name[len("fsdp2_"):])
+    tags = sorted(set(tags), key=lambda tag: checkpoint_order(checkpoint_path, tag))[-keep_last:]
+    if not tags:
+        raise RuntimeError(f"no checkpoints found in {checkpoint_path}")
+
+    stage_root = UPLOAD_STAGE_ROOT / f"KoHRM-Text-1.4B-raw-checkpoints-{stage_name}-latest"
+    dest = stage_root / stage_name
+    if stage_root.exists():
+        shutil.rmtree(stage_root)
+    dest.mkdir(parents=True, exist_ok=True)
+
+    for name in ["all_config.yaml", "train_metadata.yaml", "latest_checkpoint.txt"]:
+        src = checkpoint_path / name
+        if src.exists():
+            os.link(src, dest / name)
+
+    for tag in tags:
+        shutil.copytree(checkpoint_path / f"fsdp2_{tag}", dest / f"fsdp2_{tag}", copy_function=os.link)
+        for carry in checkpoint_path.glob(f"carry_{tag}.*.pt"):
+            os.link(carry, dest / carry.name)
+        info = checkpoint_path / f"{tag}_info.json"
+        if info.exists():
+            os.link(info, dest / info.name)
+
+    (dest / "upload_manifest.json").write_text(
+        json.dumps(
+            {
+                "source": str(checkpoint_path),
+                "stage": stage_name,
+                "keep_last": keep_last,
+                "tags": tags,
+                "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return stage_root
+
+
+def start_latest_checkpoint_upload(checkpoint_path: Path, stage_name: str) -> None:
+    stage_root = stage_latest_checkpoints(checkpoint_path, stage_name, keep_last=2)
+    log_path = LOG_ROOT / f"upload_{stage_name}_latest_checkpoints.log"
+    cmd = (
+        "python scripts/upload_folder_to_hf.py "
+        f"--folder {stage_root} "
+        f"--repo-id {RAW_CHECKPOINT_REPO} "
+        "--repo-type model --large --num-workers 4 "
+        f"&& rm -rf {stage_root}"
+    )
+    log(f"starting latest checkpoint upload: {cmd}")
+    f = log_path.open("ab")
+    subprocess.Popen(
+        ["bash", "-lc", cmd],
+        cwd=HRM_ROOT,
+        env=training_env(),
+        stdout=f,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+
+
+def start_converted_model_upload(checkpoint_path: Path, stage_name: str) -> None:
+    """Convert the latest epoch checkpoint to HF safetensors and upload main repo.
+
+    This runs on CPU so it does not steal VRAM from the next training stage.
+    Raw FSDP2 checkpoints still go to RAW_CHECKPOINT_REPO; this upload targets
+    the user-facing MODEL_REPO.
+    """
+    out_dir = UPLOAD_STAGE_ROOT / f"KoHRM-Text-1.4B-converted-{stage_name}"
+    log_path = LOG_ROOT / f"upload_{stage_name}_converted_model.log"
+    model_card = HRM_ROOT / "MODEL_CARD_KoHRM-Text-1.4B.md"
+    cmd = (
+        f"rm -rf {out_dir} && "
+        "python conversion/convert_to_hf.py "
+        f"--ckpt_path {checkpoint_path} "
+        "--ckpt_epoch 1 "
+        "--ckpt_use_ema true "
+        f"--out_dir {out_dir} "
+        f"--tokenizer_path {TOKENIZER_PATH} "
+        "--device cpu && "
+        f"cp {model_card} {out_dir}/README.md && "
+        "python scripts/upload_folder_to_hf.py "
+        f"--folder {out_dir} "
+        f"--repo-id {MODEL_REPO} "
+        "--repo-type model --large --num-workers 4"
+    )
+    log(f"starting converted model upload to {MODEL_REPO}: {cmd}")
+    f = log_path.open("ab")
+    subprocess.Popen(
+        ["bash", "-lc", cmd],
+        cwd=HRM_ROOT,
+        env=training_env(),
+        stdout=f,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+
+
 def main() -> None:
     LOG_ROOT.mkdir(parents=True, exist_ok=True)
     log("next continuation watcher started")
     wait_final_checkpoint(CURRENT_STAGE)
+    start_converted_model_upload(CURRENT_STAGE, "stage1-hrm-fastcap")
     ensure_small_mix()
 
     resume_from = CURRENT_STAGE
     offset = 88_522
     for stage in STAGES:
         checkpoint, steps = train_stage(stage, resume_from, offset)
+        start_latest_checkpoint_upload(checkpoint, str(stage["name"]))
+        start_converted_model_upload(checkpoint, str(stage["name"]))
         offset += steps
         resume_from = checkpoint
         log(f"completed {stage['name']}: steps={steps}, next_offset={offset}")

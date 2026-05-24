@@ -82,6 +82,7 @@ class PretrainConfig(pydantic.BaseModel):
     seed: int = 0
     checkpoint_interval: int = 1
     checkpoint_step_interval: Optional[int] = None
+    checkpoint_keep_last: Optional[int] = 2
     log_interval: int = 5
 
 
@@ -302,6 +303,54 @@ def save_training_checkpoint(config: PretrainConfig, train_state: TrainState, ra
             json.dump(step_info, f, indent=2)
         with open(os.path.join(config.checkpoint_path, "latest_checkpoint.txt"), "wt") as f:
             f.write(f"{tag}\n")
+
+    if dist.is_initialized():
+        dist.barrier()
+    if rank == 0:
+        prune_old_checkpoints(config, keep_last=config.checkpoint_keep_last)
+    if dist.is_initialized():
+        dist.barrier()
+
+
+def checkpoint_tag_order(root: Path, tag: str) -> tuple[int, int]:
+    info_path = root / f"{tag}_info.json"
+    if info_path.exists():
+        try:
+            info = json.loads(info_path.read_text(encoding="utf-8"))
+            return int(info.get("global_step", 0)), 1 if tag.startswith("epoch_") else 0
+        except Exception:
+            pass
+
+    try:
+        return int(tag.rsplit("_", 1)[-1]), 1 if tag.startswith("epoch_") else 0
+    except ValueError:
+        return 0, 0
+
+
+def prune_old_checkpoints(config: PretrainConfig, keep_last: Optional[int]):
+    if keep_last is None or keep_last <= 0 or config.checkpoint_path is None:
+        return
+
+    root = Path(config.checkpoint_path)
+    if not root.exists():
+        return
+
+    tags = []
+    for path in root.glob("fsdp2_*"):
+        if path.is_dir():
+            tags.append(path.name[len("fsdp2_"):])
+    tags = sorted(set(tags), key=lambda tag: checkpoint_tag_order(root, tag))
+    remove = tags[:-keep_last]
+    if not remove:
+        return
+
+    for tag in remove:
+        shutil.rmtree(root / f"fsdp2_{tag}", ignore_errors=True)
+        for carry in root.glob(f"carry_{tag}.*.pt"):
+            carry.unlink(missing_ok=True)
+        (root / f"{tag}_info.json").unlink(missing_ok=True)
+    print(f"[Checkpoint] Pruned {len(remove)} old checkpoints; kept latest {keep_last}: {tags[-keep_last:]}", flush=True)
+
 
 def save_code_and_config(config: PretrainConfig, train_metadata: V1DatasetMeta):
     if config.checkpoint_path is None or wandb.run is None:
