@@ -61,6 +61,25 @@ PID는 재시작 시 바뀔 수 있으므로 로그 경로를 기준으로 추�
 - 학습 중 step 단위 업로드는 하지 않습니다. 네트워크 I/O가 학습을 방해할 수 있습니다.
 - 최종 배포용 모델은 raw checkpoint가 아니라 `conversion/convert_to_hf.py` 변환 결과를 별도 업로드합니다.
 
+2026-05-24 현재 stage-1 장기 학습 결과를 반영해 다음 continuation stage부터는 epoch 기준이 아니라 step/token 기준 checkpoint 정책을 사용합니다. 한 epoch가 너무 커서 대형 continuation의 복구 경계로는 늦기 때문입니다.
+
+권장 정책:
+
+- local checkpoint interval: `10,000` steps
+- raw checkpoint HF upload interval: `20,000` steps 또는 주요 milestone
+- local retention: 최근 `2-3`개 checkpoint만 유지
+- final checkpoint: 변환 모델과 raw checkpoint 업로드 검증 전까지 로컬 유지
+
+`global_batch_size=180224` 기준:
+
+| interval | tokens | 1.02 step/s 기준 시간 |
+|---|---:|---:|
+| 5,000 steps | 약 0.90B | 약 1.35h |
+| 10,000 steps | 약 1.80B | 약 2.7h |
+| 20,000 steps | 약 3.60B | 약 5.4h |
+
+stage-1은 안전 검증을 위해 `5,000` step 저장을 사용했지만, 다음 stage는 `10,000` step 저장이 기본입니다. FSDP2 checkpoint 하나가 약 21G라서 5,000 step 저장은 디스크와 HF 업로드 부담이 큽니다.
+
 ## stage 이어 학습 명령 패턴
 
 ```bash
