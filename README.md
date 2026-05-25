@@ -37,6 +37,7 @@
 | [METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md) | HRM-Text 논문 방식, PrefixLM, 아키텍처 적용 방식 |
 | [VRAM_OOM_NOTES_2026-05-24.md](VRAM_OOM_NOTES_2026-05-24.md) | VRAM 증가/OOM 원인과 batch 정책 |
 | [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md) | stage2 완료 후 stage3/4/1/2/3/4 체인 운영 로그, 업로드 watcher, 속도 분석 |
+| [TRAINING_LOSS_ANALYSIS_2026-05-26.md](TRAINING_LOSS_ANALYSIS_2026-05-26.md) | stage1/stage2/stage3 train loss와 accuracy 해석, 계속 진행 여부 판단 |
 | [AVAILABLE_DATA.md](AVAILABLE_DATA.md) | 로컬 데이터 인벤토리와 용량 |
 | [PROGRESS_2026-05-23.md](PROGRESS_2026-05-23.md) | 실제 진행 로그 |
 | [UPSTREAM_README.md](UPSTREAM_README.md) | 원본 HRM-Text README |
@@ -156,6 +157,8 @@ prepared dataset 공개용 업로드도 병렬로 진행합니다.
 | stage3 예상 종료 | 2026-05-26 10:40 KST 전후 |
 | 전체 chain 예상 종료 | 2026-05-29 14:00 KST 전후 |
 | 중간 checkpoint upload | `scripts/watch_chain_step_checkpoints_upload.py`로 190000 step 이후 자동 업로드 |
+
+train loss와 token accuracy는 현재까지 정상입니다. stage3는 local-terminal domain shift 때문에 초반 loss가 높게 시작했지만, 2026-05-26 02:08 KST 기준 first 100 avg loss `1.1249`에서 last 100 avg loss `0.7240`으로 내려갔고, token accuracy도 `0.7167`에서 `0.7895`로 올랐습니다. 자세한 해석은 [TRAINING_LOSS_ANALYSIS_2026-05-26.md](TRAINING_LOSS_ANALYSIS_2026-05-26.md)를 봅니다.
 
 전처리와 학습은 병렬로 진행합니다.
 
