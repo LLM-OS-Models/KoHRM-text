@@ -43,7 +43,7 @@ The main model repository is intended to expose the latest model-only artifact:
 
 It is not intended to keep every training checkpoint as visible model files. Intermediate FSDP2 `.distcp` checkpoints are large resume artifacts and are kept separately in `LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints` when needed. The main repo may still have normal Hugging Face git history, but the current file tree should be treated as the latest public model export.
 
-Current public artifact: `stage1` HRM fast-cap checkpoint at `step_25000`, converted with EMA weights to `safetensors`. Training is still in progress.
+Current public artifact: `stage3` local-terminal continuation checkpoint at `step_180000`, converted with EMA weights to `safetensors`. Training is still in progress; this is an intermediate checkpoint from the ongoing `stage3-local-terminal` run.
 
 ## Model Details
 
@@ -117,7 +117,8 @@ from simple_inference_engine import inference_load_checkpoint, inference_generat
 
 ckpt = inference_load_checkpoint(
     ckpt_path="/path/to/KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs180",
-    ckpt_epoch=25000,
+    ckpt_epoch=None,
+    ckpt_step=85000,
     ckpt_use_ema=True,
     device="cuda",
 )
@@ -156,7 +157,7 @@ Completed and prepared datasets:
 | SWE-ZERO + GLM pilot mix | 251.2M | 990M | included in stage-0 mix |
 | Korean legal SFT/task data | 83.1M | 336M | included in stage-0 mix |
 | ToolBench train tool-call data | 127.0M | 500M | included in stage-0 mix |
-| HRM cleaned fast-cap stage-1 | 14.55B | 148G | current stage-1 |
+| HRM cleaned fast-cap stage-1 | 14.55B | 148G | completed through latest saved `step_85000` |
 | Korean statutes/local ordinances raw full | 308.9M | 1.2G | prepared for later stages |
 | Korean administrative rules + precedents raw full | 271.7M | 1.1G | prepared for later stages |
 | Korean legal/admin full task data | 629.0M | 2.5G | uploaded to prepared dataset repo |
@@ -207,26 +208,27 @@ The current public checkpoint was produced through staged pretraining:
 1. Train `stage-0` on `koterm_pretrain_mix_v1` with 711.3M tokens.
 2. Continue once more on the same available mix as `stage0b`.
 3. Continue to `stage-1` on HRM cleaned fast-cap data with 14.55B tokens.
-4. Convert `stage1 step_25000` EMA weights to `safetensors` and upload to the main model repo.
+4. Convert intermediate EMA weights to `safetensors` and upload to the main model repo for public inspection.
+5. Continue from `stage1 step_85000` into `stage2` on full/no-cap HRM cleaned data.
 
-Current long-running stage-1 settings:
+Current long-running stage-3 settings:
 
 | Field | Value |
 |---|---|
 | Hardware | 8 x NVIDIA H200 |
-| Data | `koterm_hrm_cleaned_fastcap_stage1_v1` |
-| Tokens in current stage dataset | 14.55B |
+| Data | `local_terminal_conversations_ctx9k_resp6k_v1` |
+| Tokens in current stage dataset | 9.39B |
 | Global batch | 180,224 tokens |
 | Local token slots/GPU | 22,528 |
 | Context | 4,096 |
 | LR | 2.2e-4 |
 | LR warmup | 2,000 steps |
-| Checkpoint interval | 5,000 steps |
-| Current public export | `step_25000`, EMA, safetensors |
+| Checkpoint interval | 10,000 steps |
+| Current public export | `stage3 step_180000`, EMA, safetensors |
 
 The run uses staged continuation. The checkpoint carries model, optimizer, EMA, and recurrent carry state forward. `resume_step_offset` and `total_steps_override` are used so the learning-rate schedule follows the intended longer pretraining run rather than resetting at every data stage.
 
-The full HRM 328G cleaned corpus is being retokenized with the new 131K tokenizer. That full no-cap retokenization is intended to support a larger 40B+ token training continuation, instead of stopping at the 14.55B fast-cap stage.
+The stage-2 full/no-cap HRM continuation has completed and produced a final epoch checkpoint. The public artifact is now being updated through the stage-3 local-terminal continuation while the remaining `stage4 -> stage1b -> stage2b -> stage3b -> stage4b` chain continues in the background.
 
 ## Intended Use
 

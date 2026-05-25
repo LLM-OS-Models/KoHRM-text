@@ -36,6 +36,7 @@
 | [HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md](HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md) | HF prepared dataset card 초안 |
 | [METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md) | HRM-Text 논문 방식, PrefixLM, 아키텍처 적용 방식 |
 | [VRAM_OOM_NOTES_2026-05-24.md](VRAM_OOM_NOTES_2026-05-24.md) | VRAM 증가/OOM 원인과 batch 정책 |
+| [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md) | stage2 완료 후 stage3/4/1/2/3/4 체인 운영 로그, 업로드 watcher, 속도 분석 |
 | [AVAILABLE_DATA.md](AVAILABLE_DATA.md) | 로컬 데이터 인벤토리와 용량 |
 | [PROGRESS_2026-05-23.md](PROGRESS_2026-05-23.md) | 실제 진행 로그 |
 | [UPSTREAM_README.md](UPSTREAM_README.md) | 원본 HRM-Text README |
@@ -141,7 +142,24 @@ prepared dataset 공개용 업로드도 병렬로 진행합니다.
 
 ## 현재 실행 상태
 
+2026-05-26 기준 실제 실행은 `stage3-local-terminal`입니다. `stage2-hrm-full-nocap`는 final epoch checkpoint까지 완료했고, `stage3 -> stage4 -> stage1b -> stage2b -> stage3b -> stage4b` 체인이 이어지도록 watcher를 분리해 실행 중입니다. 자세한 운영 기록과 속도 분석은 [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md)를 봅니다.
+
+현재 운영 요약:
+
+| 항목 | 값 |
+|---|---:|
+| 현재 stage | `stage3-local-terminal` |
+| stage3 진행률 | 2026-05-26 02:02 KST 기준 약 45.7% |
+| global batch | 180,224 tokens |
+| 실측 속도 | 약 0.91 step/s |
+| 처리량 | 약 0.590B tokens/hour |
+| stage3 예상 종료 | 2026-05-26 10:40 KST 전후 |
+| 전체 chain 예상 종료 | 2026-05-29 14:00 KST 전후 |
+| 중간 checkpoint upload | `scripts/watch_chain_step_checkpoints_upload.py`로 190000 step 이후 자동 업로드 |
+
 전처리와 학습은 병렬로 진행합니다.
+
+아래 항목은 초기 stage-0/stage-1 운영 기록입니다. 최신 stage-2 이후 운영 상태는 위 표와 [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md)를 기준으로 봅니다.
 
 1. `koterm_pretrain_mix_v1` 711.3M tokens stage-0 학습을 완료했습니다.
 2. stage-0 checkpoint에서 같은 mix를 한 번 더 이어 학습한 stage0b checkpoint를 저장했습니다.

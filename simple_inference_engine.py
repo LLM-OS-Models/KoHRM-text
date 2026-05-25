@@ -34,7 +34,13 @@ class InferenceCheckpoint:
         return self.tokenizer.decode(tokens)  # pyright: ignore[reportReturnType]
 
 
-def inference_load_checkpoint(ckpt_path: str, ckpt_epoch: Optional[int], ckpt_use_ema: bool, device: str = "cuda"):
+def inference_load_checkpoint(
+    ckpt_path: str,
+    ckpt_epoch: Optional[int],
+    ckpt_use_ema: bool,
+    device: str = "cuda",
+    ckpt_step: Optional[int] = None,
+):
     # Load Checkpoint
     # Load config
     with open(os.path.join(ckpt_path, "all_config.yaml"), "r") as f:
@@ -58,21 +64,28 @@ def inference_load_checkpoint(ckpt_path: str, ckpt_epoch: Optional[int], ckpt_us
                         weight_decay=model_cfg.weight_decay,
                         ema=model_cfg.ema)
     
-    # Detect checkpoint epoch if not specified
-    if ckpt_epoch is None:
-        ckpt_files = glob(os.path.join(ckpt_path, "fsdp2_epoch_*"))
-        if len(ckpt_files) == 0:
-            raise ValueError(f"No checkpoint files found in {ckpt_path}")
+    if ckpt_epoch is not None and ckpt_step is not None:
+        raise ValueError("Specify only one of ckpt_epoch or ckpt_step")
 
-        ckpt_epoch = max(int(Path(f).stem.split("_")[-1]) for f in ckpt_files)
-        print(f"Detected latest checkpoint epoch: {ckpt_epoch}")
+    if ckpt_step is not None:
+        checkpoint_tag = f"step_{ckpt_step}"
+    else:
+        # Detect checkpoint epoch if not specified
+        if ckpt_epoch is None:
+            ckpt_files = glob(os.path.join(ckpt_path, "fsdp2_epoch_*"))
+            if len(ckpt_files) == 0:
+                raise ValueError(f"No epoch checkpoint files found in {ckpt_path}")
+
+            ckpt_epoch = max(int(Path(f).stem.split("_")[-1]) for f in ckpt_files)
+            print(f"Detected latest checkpoint epoch: {ckpt_epoch}")
+        checkpoint_tag = f"epoch_{ckpt_epoch}"
 
     # Load checkpoint
     dcp.load({"model": model.state_dict(), "optim": get_optimizer_state_dict(model, optim)},  # pyright: ignore[reportPrivateImportUsage]
-        checkpoint_id=os.path.join(ckpt_path, f"fsdp2_epoch_{ckpt_epoch}"),
+        checkpoint_id=os.path.join(ckpt_path, f"fsdp2_{checkpoint_tag}"),
         no_dist=True  # <--- Critical for single rank loading
     )
-    carry = torch.load(os.path.join(ckpt_path, f"carry_epoch_{ckpt_epoch}.0.pt"), map_location=device)
+    carry = torch.load(os.path.join(ckpt_path, f"carry_{checkpoint_tag}.0.pt"), map_location=device)
 
     # Use EMA weights
     if ckpt_use_ema:
@@ -81,7 +94,10 @@ def inference_load_checkpoint(ckpt_path: str, ckpt_epoch: Optional[int], ckpt_us
     model = model.to(getattr(torch, model_cfg.fwd_bwd_dtype)).eval()
 
     # Load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(train_metadata.tokenizer_info["tokenizer_path"], use_fast=True)
+    tokenizer_path = Path(train_metadata.tokenizer_info["tokenizer_path"])
+    if tokenizer_path.name == "tokenizer.json":
+        tokenizer_path = tokenizer_path.parent
+    tokenizer = AutoTokenizer.from_pretrained(str(tokenizer_path), use_fast=True)
     return InferenceCheckpoint(
         model=model,
         carry=carry,

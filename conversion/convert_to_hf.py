@@ -118,6 +118,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ckpt_path", type=Path, required=True)
     parser.add_argument("--ckpt_epoch", type=int, default=None)
+    parser.add_argument("--ckpt_step", type=int, default=None)
     parser.add_argument("--ckpt_use_ema", type=parse_bool, default=True)
     parser.add_argument("--out_dir", type=Path, required=True)
     parser.add_argument("--tokenizer_path", type=Path, default=None)
@@ -125,7 +126,13 @@ def main():
     args = parser.parse_args()
 
     metadata, cfg = load_config(args.ckpt_path)
-    ckpt = inference_load_checkpoint(str(args.ckpt_path), args.ckpt_epoch, args.ckpt_use_ema, device=args.device)
+    ckpt = inference_load_checkpoint(
+        str(args.ckpt_path),
+        args.ckpt_epoch,
+        args.ckpt_use_ema,
+        device=args.device,
+        ckpt_step=args.ckpt_step,
+    )
 
     hf_state, dropped = convert_state_dict(ckpt.model.state_dict())
     print(f"[convert] mapped {len(hf_state)} tensors; dropped {len(dropped)}")
