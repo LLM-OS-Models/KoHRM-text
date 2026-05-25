@@ -20,6 +20,74 @@
 - stage마다 데이터 분포가 다르기 때문에 loss를 stage 간 절대값으로만 비교하면 안 됩니다.
 - `exact_accuracy`는 전체 response span이 모두 맞아야 올라가는 매우 엄격한 metric입니다. 긴 instruction/response 데이터에서는 낮게 나와도 비정상이라고 단정할 수 없습니다.
 
+## Paper Loss Reporting
+
+참고 논문:
+
+```text
+HRM-Text: Efficient Pretraining Beyond Scaling
+https://arxiv.org/html/2605.20613
+```
+
+논문은 우리 W&B 로그처럼 step별 train loss 숫자표나 최종 train loss 값을 공개하지 않습니다. 따라서 `우리 loss 0.72`와 `논문 loss x.xx`를 직접 비교하는 방식은 불가능합니다.
+
+대신 논문에서 loss와 관련해 확인 가능한 내용은 다음입니다.
+
+| Paper item | 내용 | 우리와의 관계 |
+|---|---|---|
+| Objective | instruction-response pair에서 response token NLL만 최적화 | 우리 `train/loss`도 response mask가 적용된 LM loss이므로 방향성은 동일 |
+| PrefixLM | instruction/prefix는 bidirectional attention, response는 causal generation | 우리도 HRM-Text PrefixLM 구조를 유지 |
+| Figure 3(a) | full causal LM 대비 response-only objective가 response-token NLL을 낮추고, PrefixLM이 response loss를 추가 개선한다고 설명 | 우리도 stage3에서 response-token loss가 빠르게 감소 중 |
+| Optimization | Adam-atan2, 2,000 step warmup 후 constant LR, no grad clipping, EMA 사용 | 우리도 같은 계열의 optimizer/LR/EMA 정책 |
+| Stability appendix | full BPTT보다 truncated/warmup deep credit assignment가 gradient spike를 줄이는 안정화 방향을 제시 | 우리 run에서 loss 발산이나 accuracy collapse가 없다는 점과 정합적 |
+| Infrastructure | 논문은 single continuous run, intermediate checkpointing/crash recovery/skip loss spike 없음 | 우리는 안정성을 위해 checkpoint/recovery/upload를 추가했으므로 loss curve에 checkpoint I/O stall이 섞일 수 있음 |
+
+논문에서 직접 인용할 핵심 포인트는 다음입니다.
+
+- HRM-Text는 broad raw-text pretraining이 아니라 instruction-response pair에서 response-only NLL을 학습합니다.
+- Figure 3은 task-completion objective와 PrefixLM이 response modeling에 유리하다고 설명합니다.
+- 논문은 1B 모델을 40B unique tokens, 16 x H100, 약 46시간에 학습했다고 밝힙니다.
+- 논문은 train loss 숫자 자체보다 downstream benchmark와 안정성 분석으로 성공 여부를 보여줍니다.
+
+## Paper Comparison
+
+논문과 우리 run의 loss 비교는 "절대값 비교"가 아니라 "학습 동역학 비교"로 해야 합니다.
+
+| 항목 | HRM-Text paper | KoHRM-Text run | 판단 |
+|---|---|---|---|
+| Train loss 공개 | step별 숫자 미공개 | W&B offline에 step별 기록 있음 | 직접 수치 비교 불가 |
+| Loss target | response-only NLL | response-only masked LM loss | 목적 함수 방향 일치 |
+| PrefixLM | 사용 | 사용 | 구조 일치 |
+| Stability signal | gradient spike 억제, HRM 안정성 분석 | loss 발산 없음, token accuracy 유지/상승 | 안정성 방향 일치 |
+| Training continuity | single continuous run, no intermediate checkpointing | staged continuation, checkpoint/upload watcher 사용 | 우리는 안정성/복구 우선 |
+| Token budget | 40B unique, 60B total duration로 해석 | stage chain 기준 더 많은 반복/추가 도메인 포함 | loss 절대값 비교 곤란 |
+| Model/tokenizer | 1B, 65,536 BPE | 1.384B, 131,072 BPE | 우리 쪽이 더 큼 |
+| Dataset | task-formatted instruction-response mixture | HRM data + Korean/legal/finance/terminal/tool/code mix | stage별 domain shift 큼 |
+
+우리 loss 흐름이 논문 방법론과 맞는 부분:
+
+1. Stage1에서 response-token loss가 빠르게 내려갔습니다.
+2. Stage2에서 HRM full/no-cap continuation이 안정적으로 유지됐습니다.
+3. Stage3에서 local-terminal domain shift가 있었지만 loss가 빠르게 회복됐습니다.
+4. Token accuracy가 stage3에서 0.79 전후까지 올라왔습니다.
+5. 현재까지 gradient/optimization instability로 보이는 loss 폭주는 없습니다.
+
+논문과 다르게 봐야 할 부분:
+
+1. 논문은 downstream benchmark 중심이고 train loss curve를 공개하지 않았습니다.
+2. 우리는 중간 checkpoint와 upload watcher를 사용하므로 I/O stall이 있습니다.
+3. 우리는 한국어/터미널/툴콜 목적이 강해서 stage별 loss 변동이 더 큽니다.
+4. 131K tokenizer는 loss scale과 token accuracy 해석에 영향을 줍니다.
+5. 현재 loss가 좋아도 실제 terminal/tool-call 성능은 별도 평가가 필요합니다.
+
+결론:
+
+```text
+논문과 loss 숫자를 직접 비교할 수는 없지만, 논문이 강조한 response-only NLL 안정 학습과 PrefixLM 효과라는 방향에서는 우리 학습 흐름이 정상입니다.
+```
+
+현재까지의 우리 loss는 논문 방법론과 충돌하지 않습니다. 오히려 stage3 domain shift 이후 loss가 빠르게 낮아지고 token accuracy가 상승했다는 점은 continuation이 잘 작동하고 있다는 강한 신호입니다.
+
 ## Current Stage Snapshot
 
 기준 시각: 2026-05-26 02:08 KST
@@ -257,4 +325,3 @@
 - 모델이 충분히 저장된 뒤 terminal/tool-call smoke eval을 수행합니다.
 - 학습 loss만으로 "실제 terminal tool-call 성능"을 확정하지 않습니다.
 - stage4 이후 모델을 기준으로 짧은 한국어/터미널/툴콜 생성 샘플을 확인합니다.
-
