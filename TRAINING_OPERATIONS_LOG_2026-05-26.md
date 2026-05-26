@@ -343,9 +343,68 @@ H200은 GPU당 VRAM과 memory bandwidth가 더 좋지만, GPU 수가 절반입�
 |---|---|
 | `scripts/watch_stage2_then_two_pass_chain.py` | stage2 종료 후 `3 -> 4 -> 1 -> 2 -> 3 -> 4` chain orchestration |
 | `scripts/watch_stage3_then_finish_chain.py` | stage3가 이미 시작된 경우 이후 chain을 복구/연결 |
+| `scripts/watch_stage1b_then_finish_chain.py` | stage1b 이후 실제 checkpoint global_step 기준으로 `stage2b -> stage3b -> stage4b`를 이어가는 handoff watcher |
 | `scripts/watch_chain_step_checkpoints_upload.py` | `fsdp2_step_*` 중간 checkpoint 자동 업로드 |
 | `scripts/build_hrm_extra_sample_epochs.py` | HRM full/no-cap extra epoch dataset 구성 |
 | `conversion/convert_to_hf.py` | `--ckpt_step` 변환 지원 |
 | `simple_inference_engine.py` | step checkpoint load와 tokenizer path 처리 보강 |
 | `MODEL_CARD_KoHRM-Text-1.4B.md` | 최신 public artifact 설명 갱신 |
 
+## Stage1b Handoff Fix
+
+기준 시각: 2026-05-26 17:14 KST
+
+`stage3 -> stage4 -> stage1b` 자동 시작은 정상 동작했습니다. 다만 기존 `scripts/watch_stage3_then_finish_chain.py`는 stage 종료 후 다음 offset을 실제 checkpoint의 `epoch_1_info.json`에서 읽지 않고, metadata token count로 계산한 예상 step 수를 더하는 방식이었습니다.
+
+이 방식은 대부분의 경우 충분히 가깝지만, 실제 `pretrain.py`가 마지막 batch/checkpoint를 처리하면서 `skip_batches_hint`와 metadata floor 값 사이에 수십 step 차이가 생길 수 있습니다. 예를 들어 `stage4-korean-tool-finance`는 watcher 계산상 `16,759` steps였지만, checkpoint metadata에는 `global_step=237,257`, `skip_batches_hint=16,824`로 기록됐습니다.
+
+조치:
+
+1. 현재 학습 중인 `stage1b-hrm-fastcap-repeat` torchrun은 그대로 유지했습니다.
+2. 기존 watcher PID `1672885`만 `SIGSTOP`으로 멈춰서 stage1b 종료 후 중복 stage2b를 시작하지 못하게 했습니다.
+3. 새 `scripts/watch_stage1b_then_finish_chain.py`를 실행했습니다.
+4. 새 watcher는 stage1b final checkpoint가 생성되면 `epoch_1_info.json`의 실제 `global_step`을 읽고 그 값을 다음 stage의 `resume_step_offset`으로 사용합니다.
+5. 기존 `scripts/watch_stage3_then_finish_chain.py`도 stage 종료 후 실제 checkpoint `global_step`을 우선 사용하도록 수정했습니다.
+
+현재 handoff watcher:
+
+```text
+python scripts/watch_stage1b_then_finish_chain.py --retire-pid 1672885
+```
+
+남은 stage 이름은 다음처럼 고정합니다.
+
+| 순서 | Stage name | Data |
+|---:|---|---|
+| 1 | `stage1b-hrm-fastcap-repeat` | `koterm_hrm_cleaned_fastcap_stage1_v1` |
+| 2 | `stage2b-hrm-full-nocap-extra-epoch1` | `koterm_hrm_cleaned_full_nocap_extra_epochs_1_3_v1` |
+| 3 | `stage3b-local-terminal-repeat` | `local_terminal_conversations_ctx9k_resp6k_v1` |
+| 4 | `stage4b-korean-tool-finance-repeat` | `koterm_korean_tool_finance_mix_v1` |
+
+데이터/시간 기준:
+
+| Stage | Disk | Metadata tokens | Planned steps | ETA at 1.02 step/s |
+|---|---:|---:|---:|---:|
+| stage1/stage1b fastcap | 148GB | 14.554B | 80,756 | 21.99h full stage |
+| stage2 full/no-cap | 633GB | 14.554B | 80,753 | 21.99h |
+| stage2b extra epoch source | 637GB | 14.554B | 80,753 | 21.99h |
+| stage3 terminal | 36GB | 9.387B | 52,082 | 14.18h |
+| stage4 Korean/tool/finance | 12GB | 3.021B | 16,759 | 4.56h |
+
+실측:
+
+| 항목 | 값 |
+|---|---:|
+| stage4 start | 2026-05-26 11:30:35 KST |
+| stage4 finish | 2026-05-26 16:13:17 KST |
+| stage4 elapsed | 4h 42m 42s |
+| stage1b current step at check | 240,760 |
+| stage1b current progress | 3,568 / 80,756 = 4.42% |
+| stage1b expected finish | 2026-05-27 14:16 KST |
+| remaining chain expected finish | 2026-05-29 07:00 KST |
+
+해석:
+
+```text
+모델 weight resume 자체는 stage4 checkpoint에서 정상적으로 이어졌습니다. 이번 수정의 핵심은 다음 stage들의 global step 이름과 resume offset을 실제 checkpoint 기준으로 맞춰, 이후 stage2b/stage3b/stage4b가 중복 실행되거나 잘못된 step label로 이어지지 않게 하는 것입니다.
+```

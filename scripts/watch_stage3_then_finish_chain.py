@@ -139,7 +139,11 @@ def train_stage(stage: dict[str, Path | str], resume_from: Path, resume_step_off
         "checkpoint_interval=1",
     ]
     run_logged(cmd, LOG_ROOT / f"KoHRM-Text-1.4B-{name}.log")
-    return checkpoint_path, steps
+    try:
+        actual_step = checkpoint_global_step(checkpoint_path)
+    except FileNotFoundError:
+        actual_step = resume_step_offset + steps
+    return checkpoint_path, actual_step
 
 
 def main() -> None:
@@ -157,12 +161,12 @@ def main() -> None:
             ensure_or_wait_small_mix()
         else:
             validate_dataset(data_path)
-        checkpoint, steps = train_stage(stage, resume_from, offset)
+        checkpoint, next_offset = train_stage(stage, resume_from, offset)
         start_latest_checkpoint_upload(checkpoint, str(stage["name"]))
         start_converted_model_upload(checkpoint, str(stage["name"]))
-        offset += steps
+        offset = next_offset
         resume_from = checkpoint
-        log(f"completed {stage['name']}: steps={steps}, next_offset={offset}")
+        log(f"completed {stage['name']}: next_offset={offset}")
 
     log("stage3 recovery continuation chain completed")
 
