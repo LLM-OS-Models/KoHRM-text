@@ -372,6 +372,15 @@ H200은 GPU당 VRAM과 memory bandwidth가 더 좋지만, GPU 수가 절반입�
 python scripts/watch_stage1b_then_finish_chain.py --retire-pid 1672885
 ```
 
+첫 handoff watcher process는 로그 두 줄만 남기고 내려갔습니다. 학습 프로세스는 계속 살아 있었고 GPU 사용률도 유지됐습니다. watcher만 `setsid`로 완전히 분리해 재기동했습니다.
+
+현재 재기동된 watcher:
+
+```text
+PID 2713801
+setsid -f bash -c 'cd /home/work/.projects/LLM-OS-Models/Terminal/HRM-Text && exec python scripts/watch_stage1b_then_finish_chain.py --retire-pid 1672885 >> /home/work/.data/hrm_text_logs/watch_stage1b_then_finish_chain_20260526.log 2>&1 < /dev/null'
+```
+
 남은 stage 이름은 다음처럼 고정합니다.
 
 | 순서 | Stage name | Data |

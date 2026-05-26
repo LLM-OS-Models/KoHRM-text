@@ -43,7 +43,7 @@ The main model repository is intended to expose the latest model-only artifact:
 
 It is not intended to keep every training checkpoint as visible model files. Intermediate FSDP2 `.distcp` checkpoints are large resume artifacts and are kept separately in `LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints` when needed. The main repo may still have normal Hugging Face git history, but the current file tree should be treated as the latest public model export.
 
-Current public artifact: `stage3` local-terminal continuation checkpoint at `step_180000`, converted with EMA weights to `safetensors`. Training is still in progress; this is an intermediate checkpoint from the ongoing `stage3-local-terminal` run.
+Current public artifact target: latest converted EMA checkpoint from the ongoing staged run. As of 2026-05-26 17:17 KST, `stage1b-hrm-fastcap-repeat` has produced and uploaded `step_240000`. Training is still in progress; this is an intermediate checkpoint, not the final aligned model.
 
 ## Model Details
 
@@ -157,7 +157,9 @@ Completed and prepared datasets:
 | SWE-ZERO + GLM pilot mix | 251.2M | 990M | included in stage-0 mix |
 | Korean legal SFT/task data | 83.1M | 336M | included in stage-0 mix |
 | ToolBench train tool-call data | 127.0M | 500M | included in stage-0 mix |
-| HRM cleaned fast-cap stage-1 | 14.55B | 148G | completed through latest saved `step_85000` |
+| HRM cleaned fast-cap stage-1/stage1b | 14.55B | 148G | stage1 completed; active stage1b repeat |
+| HRM cleaned full/no-cap stage2 | 14.55B | 633G | completed stage2 |
+| HRM cleaned full/no-cap extra stage2b | 14.55B | 637G | scheduled after stage1b |
 | Korean statutes/local ordinances raw full | 308.9M | 1.2G | prepared for later stages |
 | Korean administrative rules + precedents raw full | 271.7M | 1.1G | prepared for later stages |
 | Korean legal/admin full task data | 629.0M | 2.5G | uploaded to prepared dataset repo |
@@ -210,25 +212,27 @@ The current public checkpoint was produced through staged pretraining:
 3. Continue to `stage-1` on HRM cleaned fast-cap data with 14.55B tokens.
 4. Convert intermediate EMA weights to `safetensors` and upload to the main model repo for public inspection.
 5. Continue from `stage1 step_85000` into `stage2` on full/no-cap HRM cleaned data.
+6. Continue through `stage3-local-terminal` and `stage4-korean-tool-finance`.
+7. Continue through `stage1b -> stage2b -> stage3b -> stage4b` using actual checkpoint `global_step` metadata for handoff.
 
-Current long-running stage-3 settings:
+Current long-running stage1b settings:
 
 | Field | Value |
 |---|---|
 | Hardware | 8 x NVIDIA H200 |
-| Data | `local_terminal_conversations_ctx9k_resp6k_v1` |
-| Tokens in current stage dataset | 9.39B |
+| Data | `koterm_hrm_cleaned_fastcap_stage1_v1` |
+| Tokens in current stage dataset | 14.55B |
 | Global batch | 180,224 tokens |
 | Local token slots/GPU | 22,528 |
 | Context | 4,096 |
 | LR | 2.2e-4 |
 | LR warmup | 2,000 steps |
 | Checkpoint interval | 10,000 steps |
-| Current public export | `stage3 step_180000`, EMA, safetensors |
+| Current public export | `stage1b step_240000`, EMA, safetensors |
 
 The run uses staged continuation. The checkpoint carries model, optimizer, EMA, and recurrent carry state forward. `resume_step_offset` and `total_steps_override` are used so the learning-rate schedule follows the intended longer pretraining run rather than resetting at every data stage.
 
-The stage-2 full/no-cap HRM continuation has completed and produced a final epoch checkpoint. The public artifact is now being updated through the stage-3 local-terminal continuation while the remaining `stage4 -> stage1b -> stage2b -> stage3b -> stage4b` chain continues in the background.
+The stage-2 full/no-cap HRM continuation, stage-3 local-terminal continuation, and stage-4 Korean/tool/finance continuation have completed. The active run is `stage1b-hrm-fastcap-repeat`; the remaining `stage2b -> stage3b -> stage4b` chain is handled by a handoff watcher that reads the actual `epoch_1_info.json` `global_step` from each completed checkpoint before starting the next stage.
 
 ## Intended Use
 

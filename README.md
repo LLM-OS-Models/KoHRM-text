@@ -37,6 +37,7 @@
 | [METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md) | HRM-Text 논문 방식, PrefixLM, 아키텍처 적용 방식 |
 | [VRAM_OOM_NOTES_2026-05-24.md](VRAM_OOM_NOTES_2026-05-24.md) | VRAM 증가/OOM 원인과 batch 정책 |
 | [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md) | stage2 완료 후 stage3/4/1/2/3/4 체인 운영 로그, 업로드 watcher, 속도 분석 |
+| [CHAIN_HANDOFF_STATUS_2026-05-26.md](CHAIN_HANDOFF_STATUS_2026-05-26.md) | stage1b 이후 이어학습 handoff 상태, stage 이름, 용량, ETA, watcher 보정 |
 | [TRAINING_LOSS_ANALYSIS_2026-05-26.md](TRAINING_LOSS_ANALYSIS_2026-05-26.md) | stage1/stage2/stage3 train loss와 accuracy 해석, 계속 진행 여부 판단 |
 | [AVAILABLE_DATA.md](AVAILABLE_DATA.md) | 로컬 데이터 인벤토리와 용량 |
 | [PROGRESS_2026-05-23.md](PROGRESS_2026-05-23.md) | 실제 진행 로그 |
@@ -81,7 +82,8 @@
 | 한국어 위키백과 원문 full | 전처리 완료 | 462.5M |
 | HF extra reasoning/agent/mm | 전처리 완료 | 112.6M |
 | local terminal `swe/code/math` | 최적화 JSONL + V1Dataset 완료 | 9.39B |
-| HRM cleaned 328G full nocap | 새 tokenizer 재토큰화 거의 완료, V1Dataset 패킹 예약 | 산출 후 산정 |
+| HRM cleaned full/no-cap stage-2 | 새 tokenizer V1Dataset 생성 및 stage2 학습 완료 | 14.55B |
+| HRM cleaned full/no-cap extra stage-2b | V1Dataset 생성 완료, stage1b 이후 이어학습 예약 | 14.55B |
 | 한국어 법률/조례/행정규칙/판례 task full nocap | 전처리 및 HF 업로드 완료 | 629.0M |
 | BCAI Finance Korean | 다운로드, HRM 변환, V1Dataset 전처리, HF 업로드 완료 | 857.7M |
 
@@ -102,7 +104,7 @@
 /home/work/.data/hrm_text_prepared/sft_bcai_finance_kor_v1
 ```
 
-현재 stage-1의 14.55B tokens는 최종 40B 목표가 아니라 GPU를 먼저 계속 쓰기 위한 fast-cap stage입니다. 기존 HRM cleaned 328G 원본은 새 tokenizer로 cap 없이 다시 처리해야 하며, 현재는 fast-cap tokenized root를 재활용해 uncapped 산출물로 확장하는 방식으로 진행합니다. 완료 후 sampling/merge해서 다음 stage에서 이어 학습합니다.
+현재 stage-1의 14.55B tokens는 최종 40B 목표가 아니라 GPU를 먼저 계속 쓰기 위한 fast-cap stage입니다. 기존 HRM cleaned 원본 계열은 새 tokenizer로 다시 처리해 `stage2-hrm-full-nocap`와 `stage2b-hrm-full-nocap-extra-epoch1`로 사용합니다. 실제 이어학습은 stage별 checkpoint의 `epoch_1_info.json`에 기록된 `global_step`을 기준으로 이어갑니다.
 
 prepared dataset 공개용 업로드도 병렬로 진행합니다.
 
@@ -143,20 +145,23 @@ prepared dataset 공개용 업로드도 병렬로 진행합니다.
 
 ## 현재 실행 상태
 
-2026-05-26 기준 실제 실행은 `stage3-local-terminal`입니다. `stage2-hrm-full-nocap`는 final epoch checkpoint까지 완료했고, `stage3 -> stage4 -> stage1b -> stage2b -> stage3b -> stage4b` 체인이 이어지도록 watcher를 분리해 실행 중입니다. 자세한 운영 기록과 속도 분석은 [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md)를 봅니다.
+2026-05-26 17:17 KST 기준 실제 실행은 `stage1b-hrm-fastcap-repeat`입니다. `stage3-local-terminal`과 `stage4-korean-tool-finance`는 완료됐고, 현재는 stage4 final checkpoint에서 이어받은 stage1b가 8 x H200에서 실행 중입니다. 자세한 운영 기록과 handoff 상태는 [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md)와 [CHAIN_HANDOFF_STATUS_2026-05-26.md](CHAIN_HANDOFF_STATUS_2026-05-26.md)를 봅니다.
 
 현재 운영 요약:
 
 | 항목 | 값 |
 |---|---:|
-| 현재 stage | `stage3-local-terminal` |
-| stage3 진행률 | 2026-05-26 02:02 KST 기준 약 45.7% |
+| 현재 stage | `stage1b-hrm-fastcap-repeat` |
+| 현재 global step | 240,905 |
+| stage1b 진행률 | 2026-05-26 17:17 KST 기준 3,713 / 80,756 = 4.60% |
 | global batch | 180,224 tokens |
-| 실측 속도 | 약 0.91 step/s |
-| 처리량 | 약 0.590B tokens/hour |
-| stage3 예상 종료 | 2026-05-26 10:40 KST 전후 |
-| 전체 chain 예상 종료 | 2026-05-29 14:00 KST 전후 |
+| 실측 속도 | 약 1.02 step/s |
+| 처리량 | 약 0.66B tokens/hour |
+| stage1b 예상 종료 | 2026-05-27 14:16 KST 전후 |
+| 전체 chain 예상 종료 | 2026-05-29 07:00 KST 전후 |
 | 중간 checkpoint upload | `scripts/watch_chain_step_checkpoints_upload.py`로 190000 step 이후 자동 업로드 |
+
+이어학습 handoff는 보정했습니다. 기존 recovery watcher PID `1672885`는 `SIGSTOP` 상태로 멈췄고, 새 `scripts/watch_stage1b_then_finish_chain.py` watcher가 stage1b final checkpoint를 기다립니다. stage1b 종료 후 다음 stage는 metadata 추정 step이 아니라 checkpoint의 실제 `epoch_1_info.json` `global_step`으로 이어갑니다.
 
 train loss와 token accuracy는 현재까지 정상입니다. stage3는 local-terminal domain shift 때문에 초반 loss가 높게 시작했지만, 2026-05-26 02:08 KST 기준 first 100 avg loss `1.1249`에서 last 100 avg loss `0.7240`으로 내려갔고, token accuracy도 `0.7167`에서 `0.7895`로 올랐습니다. 자세한 해석은 [TRAINING_LOSS_ANALYSIS_2026-05-26.md](TRAINING_LOSS_ANALYSIS_2026-05-26.md)를 봅니다.
 
