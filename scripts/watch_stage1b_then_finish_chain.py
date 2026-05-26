@@ -30,6 +30,7 @@ from watch_stage1_then_train_next import (
 TOTAL_STEPS_OVERRIDE = 465_000
 
 STAGE1B = CKPT_ROOT / "KoHRM-Text-1.4B-stage1b-hrm-fastcap-repeat-gbs180"
+STAGE1B_RUN_NAME = "KoHRM-Text-1.4B-stage1b-hrm-fastcap-repeat"
 
 REMAINING_STAGES = [
     {
@@ -85,6 +86,45 @@ def retire_pid(pid: int | None) -> None:
         log(f"could not retire previous watcher pid={pid}: {exc}")
 
 
+def live_training_processes(run_name: str) -> list[int]:
+    out = subprocess.run(
+        ["ps", "-eo", "pid=,stat=,cmd="],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    )
+    pids: list[int] = []
+    for line in out.stdout.splitlines():
+        parts = line.strip().split(maxsplit=2)
+        if len(parts) < 3:
+            continue
+        pid_s, stat, cmd = parts
+        try:
+            pid = int(pid_s)
+        except ValueError:
+            continue
+        if pid == os.getpid() or stat.startswith("Z"):
+            continue
+        if run_name in cmd and ("torchrun" in cmd or "pretrain.py" in cmd):
+            pids.append(pid)
+    return pids
+
+
+def wait_training_process_exit(run_name: str) -> None:
+    last_log = 0.0
+    while True:
+        pids = live_training_processes(run_name)
+        if not pids:
+            log(f"training process for {run_name} has exited")
+            return
+        now = time.monotonic()
+        if now - last_log >= 60:
+            log(f"waiting for {run_name} processes to exit before next stage: pids={pids}")
+            last_log = now
+        time.sleep(10)
+
+
 def read_finished_step(checkpoint_path: Path, fallback: int) -> int:
     info_path = checkpoint_path / "epoch_1_info.json"
     if info_path.exists():
@@ -132,6 +172,7 @@ def main() -> None:
 
     offset = wait_epoch_checkpoint(STAGE1B, "stage1b-hrm-fastcap-repeat")
     retire_pid(args.retire_pid)
+    wait_training_process_exit(STAGE1B_RUN_NAME)
     start_latest_checkpoint_upload(STAGE1B, "stage1b-hrm-fastcap-repeat")
     start_converted_model_upload(STAGE1B, "stage1b-hrm-fastcap-repeat")
 

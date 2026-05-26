@@ -381,6 +381,20 @@ PID 2713801
 setsid -f bash -c 'cd /home/work/.projects/LLM-OS-Models/Terminal/HRM-Text && exec python scripts/watch_stage1b_then_finish_chain.py --retire-pid 1672885 >> /home/work/.data/hrm_text_logs/watch_stage1b_then_finish_chain_20260526.log 2>&1 < /dev/null'
 ```
 
+2026-05-27 06:24 KST에 handoff watcher를 한 번 더 보강했습니다. 기존 로직은 stage1b final checkpoint 파일을 감지하면 바로 stage2b를 시작할 수 있었습니다. 이제는 `stage1b` final checkpoint 감지 후 기존 watcher를 retire하고, `stage1b` torchrun/pretrain 프로세스가 완전히 종료됐는지 확인한 뒤 stage2b를 시작합니다.
+
+이 변경의 목적은 다음입니다.
+
+```text
+stage1b final checkpoint 감지
+-> 기존 stopped watcher 정리
+-> stage1b GPU process exit 확인
+-> stage1b final raw/converted upload 시작
+-> stage2b-hrm-full-nocap-extra-epoch1 즉시 시작
+```
+
+이전 `stage3 -> stage4 -> stage1b` 전환은 동일 watcher의 `subprocess.run` 경로였기 때문에 torchrun 종료를 자연스럽게 기다렸습니다. 현재는 handoff watcher가 별도 프로세스이므로, 같은 안정성을 명시적으로 넣었습니다.
+
 남은 stage 이름은 다음처럼 고정합니다.
 
 | 순서 | Stage name | Data |

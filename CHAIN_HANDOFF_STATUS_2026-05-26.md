@@ -74,6 +74,7 @@
 3. 기존 watcher PID `1672885`는 `SIGSTOP` 상태로 멈췄습니다.
 4. 새 watcher는 `stage1b` final checkpoint를 기다린 뒤 실제 `global_step`으로 `stage2b -> stage3b -> stage4b`를 이어갑니다.
 5. 첫 handoff watcher 프로세스는 로그 두 줄만 남기고 내려갔기 때문에, `setsid`로 완전히 분리해 다시 실행했습니다.
+6. 2026-05-27 06:24 KST 기준 watcher를 보강했습니다. final checkpoint 파일이 보인 직후 다음 stage를 바로 띄우지 않고, `stage1b` torchrun/pretrain 프로세스가 완전히 종료된 것을 확인한 뒤 `stage2b`를 시작합니다. 이 대기는 GPU overlap/OOM을 막기 위한 것이며, 정상 종료 시 지연은 매우 짧습니다.
 
 현재 watcher 상태:
 
@@ -81,7 +82,7 @@
 |---|---|
 | 기존 recovery watcher `1672885` | `SIGSTOP`, 중복 stage 시작 방지 |
 | 현재 torchrun `2655770` | stage1b 학습 중 |
-| handoff watcher `2713801` | stage1b final checkpoint 대기 중 |
+| handoff watcher | stage1b final checkpoint와 stage1b process exit 대기 후 stage2b 시작 |
 | checkpoint upload watcher `1997999` | 10,000 step 단위 raw/converted checkpoint 자동 업로드 |
 
 ## Upload State
