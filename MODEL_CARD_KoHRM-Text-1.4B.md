@@ -109,15 +109,15 @@ The tokenizer was trained for Korean, English, code, shell/terminal text, and JS
 
 Formatting tokens:
 
-| Token | Meaning |
-|---|---|
-| `<|im_start|>` | instruction start |
-| `<|im_end|>` | instruction end |
-| `<|box_end|>` | response/end marker |
-| `<|object_ref_start|>` | direct condition |
-| `<|object_ref_end|>` | chain-of-thought style condition |
-| `<|quad_start|>` | noisy condition |
-| `<|quad_end|>` | synthetic condition |
+```text
+<|im_start|>         instruction start
+<|im_end|>           instruction end
+<|box_end|>          response/end marker
+<|object_ref_start|> direct condition
+<|object_ref_end|>   chain-of-thought style condition
+<|quad_start|>       noisy condition
+<|quad_end|>         synthetic condition
+```
 
 Prompt format used by the project-side inference code:
 
@@ -380,15 +380,15 @@ This work builds on HRM-Text:
 
 포맷 token:
 
-| Token | 의미 |
-|---|---|
-| `<|im_start|>` | instruction 시작 |
-| `<|im_end|>` | instruction 종료 |
-| `<|box_end|>` | response/end marker |
-| `<|object_ref_start|>` | direct condition |
-| `<|object_ref_end|>` | chain-of-thought style condition |
-| `<|quad_start|>` | noisy condition |
-| `<|quad_end|>` | synthetic condition |
+```text
+<|im_start|>         instruction 시작
+<|im_end|>           instruction 종료
+<|box_end|>          response/end marker
+<|object_ref_start|> direct condition
+<|object_ref_end|>   chain-of-thought style condition
+<|quad_start|>       noisy condition
+<|quad_end|>         synthetic condition
+```
 
 프로젝트 내부 inference code가 쓰는 prompt 형식:
 
