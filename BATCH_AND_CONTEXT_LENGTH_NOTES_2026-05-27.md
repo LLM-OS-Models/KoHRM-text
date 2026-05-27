@@ -10,6 +10,8 @@ SFT batch size와 pretraining batch size는 완전히 다른 개념은 아닙니
 
 둘 다 `pretrain.py`의 같은 `global_batch_size` 필드를 쓰며, 단위도 모두 sample count가 아니라 token slots입니다. 다만 pretraining과 SFT는 데이터 분포, 학습률, optimizer resume 정책, 안정성 목표가 다르므로 실무적으로는 별도의 하이퍼파라미터처럼 잡습니다.
 
+수식적으로는 현재 KoHRM-Text recipe의 PT와 SFT는 거의 같습니다. 둘 다 instruction-response PrefixLM response-only cross entropy입니다. 차이는 objective의 수식보다 데이터 규모와 품질, LR/batch/epoch/optimizer 정책, 평가 기준에서 납니다.
+
 현재 장기 pretraining 실행값은 다음과 같습니다.
 
 | 항목 | 값 |
@@ -62,6 +64,172 @@ ema: 0.999
 |---|---:|---:|---|
 | pretraining | `196,608` | `180,224` | token slots/step |
 | SFT | `32,768` | final SFT 때 재조정 | token slots/step |
+
+## PT And SFT: Same Math, Different Regime
+
+현재 KoHRM-Text에서는 PT와 SFT가 수식적으로 크게 다르지 않습니다.
+
+일반적인 LLM 문맥에서 pretraining은 raw text causal LM으로 모든 token에 next-token loss를 거는 경우가 많습니다. 하지만 HRM-Text 논문 방식과 현재 KoHRM-Text recipe는 처음부터 instruction-response pair를 PrefixLM으로 학습합니다. 그래서 우리의 PT도 이미 SFT와 같은 형태의 supervised instruction pretraining입니다.
+
+기본 loss는 다음처럼 볼 수 있습니다.
+
+```text
+L(theta) = - sum_t m_t log p_theta(y_t | prefix, y_<t)
+```
+
+여기서:
+
+| 기호 | 의미 |
+|---|---|
+| `prefix` | instruction/prompt/context span |
+| `y_t` | response token |
+| `m_t` | loss mask |
+| `m_t = 0` | prompt/instruction token, context로만 사용 |
+| `m_t = 1` | response token, loss 적용 |
+
+현재 코드 기준으로는 `data.target_only=True`가 기본이라 instruction token은 `IGNORE_LABEL_ID`로 마스킹되고 response token에만 CE loss가 걸립니다.
+
+즉 수식 관점의 핵심은 다음입니다.
+
+| 항목 | Pretraining | SFT | 현재 KoHRM에서 같은가 |
+|---|---|---|---|
+| model forward | HRM PrefixLM | HRM PrefixLM | 같음 |
+| token prediction | next response token | next response token | 같음 |
+| prompt token loss | 없음 | 없음 | 같음 |
+| response token loss | 있음 | 있음 | 같음 |
+| attention 방식 | prefix + causal response | prefix + causal response | 같음 |
+| objective | response-only CE | response-only CE | 같음 |
+| code path | `pretrain.py` | `pretrain.py` + `cfg_sft.yaml` | 거의 같음 |
+
+따라서 “PT냐 SFT냐”를 나누는 실제 기준은 loss 수식이 아니라 학습 regime입니다.
+
+| 구분 | Pretraining/PT | SFT |
+|---|---|---|
+| 목적 | 기본 언어/지식/코드/터미널/툴콜 능력 형성 | 응답 양식, 지시 이행, tool-call 정확도, 터미널 행동 보정 |
+| 데이터 규모 | 큼, 수십 B token 이상 | 작음, 고품질 subset 중심 |
+| 데이터 품질 기준 | 폭넓은 coverage와 중복/오염 관리 | 포맷 정확도와 행동 품질을 더 엄격히 봄 |
+| 데이터 반복 | 큰 corpus를 staged 반복 | 작은 corpus를 여러 epoch 반복 가능 |
+| batch | 큼, 처리량/안정성 우선 | 보통 작게 시작, update 수와 세밀한 보정 우선 |
+| learning rate | 큼, 현재 pretrain config `2.2e-4` | 작음, 현재 SFT config `3.0e-5` |
+| warmup | 있음, 현재 `2000` steps | 보통 없음 또는 짧음 |
+| optimizer | 연속 pretraining trajectory 유지 | EMA weight에서 optimizer reset 가능 |
+| EMA | 긴 학습용 `0.9999` | 짧은 SFT용 `0.999` |
+| 평가 | loss/accuracy + downstream broad eval | tool-call exactness, terminal trajectory, Korean style, formatting |
+
+## What Is Actually Different In Code
+
+PT와 SFT가 같은 `pretrain.py`를 쓰더라도 config가 다릅니다.
+
+| 설정 | PT config | SFT config | 의미 |
+|---|---:|---:|---|
+| `global_batch_size` | `196608` 기본, 현재 `180224` | `32768` 기본 | token slots/step |
+| `epochs` | `4` 기본, staged run은 보통 stage별 `1` | `5` 기본 | 데이터 반복 횟수 |
+| `lr` | `2.2e-4` | `3.0e-5` | SFT가 훨씬 낮음 |
+| `lr_warmup_steps` | `2000` | `0` | SFT는 이미 학습된 weight에서 시작 |
+| `ema` | `0.9999` | `0.999` | 짧은 SFT trajectory를 더 빨리 따라가게 함 |
+| `weights_only_resume_from_ema` | 보통 `false` | 상황에 따라 `true` 권장 | SFT 때 optimizer reset 여부 |
+| `arch.bp_warmup_ratio` | HRM 기본 `0.2` | `0.0` | SFT에서는 BP warmup 없이 바로 fine-tune |
+
+중요한 점은 SFT config도 모델 구조를 바꾸지 않는다는 것입니다. arch는 PT checkpoint와 맞아야 하고, tokenizer/context/vocab도 동일해야 합니다.
+
+## Dataset Difference
+
+현재 KoHRM-Text recipe에서는 SFT 후보 데이터도 PT에 먼저 넣습니다. 그래서 “SFT 데이터는 PT에서 제외”가 아닙니다.
+
+정책은 다음입니다.
+
+| 데이터 종류 | PT에서 사용 | SFT에서 재사용 | 이유 |
+|---|---|---|---|
+| HRM cleaned instruction data | 사용 | 일부 가능 | 기본 instruction ability |
+| 한국어 법률/행정/위키 원문 task | 사용 | 고품질 subset 가능 | 한국어 지식과 문체 |
+| terminal trajectory | 사용 | 강하게 재사용 | terminal action 품질 핵심 |
+| tool-call data | 사용 | 강하게 재사용 | 함수 호출 형식 안정화 |
+| finance/legal QA | 사용 | 고품질 subset 재사용 | 도메인 지시 이행 |
+| reasoning/coding SFT 후보 | 사용 | 선별 재사용 | reasoning/coding 행동 |
+
+PT에서는 coverage를 넓게 가져갑니다. SFT에서는 같은 계열이라도 더 엄격하게 고릅니다.
+
+SFT에서 더 엄격히 보는 제거 기준:
+
+- 깨진 JSON/tool-call
+- 불완전한 trajectory
+- benchmark contamination 위험
+- 과도한 private reasoning trace
+- 한국어 응답 품질이 낮은 샘플
+- instruction과 response가 불일치하는 샘플
+- response가 너무 짧거나 포맷만 있고 내용이 없는 샘플
+
+## Batch Size Consequence
+
+PT와 SFT가 같은 token-based batch를 쓰므로, 기술적으로 SFT도 큰 batch를 쓸 수 있습니다. 다만 batch를 키우면 update 수가 줄어듭니다.
+
+```text
+steps_per_epoch = total_tokens / global_batch_size
+```
+
+예를 들어 SFT 데이터가 1B tokens라면:
+
+| global batch | 1 epoch steps |
+|---:|---:|
+| 32,768 | 약 30,518 |
+| 65,536 | 약 15,259 |
+| 131,072 | 약 7,629 |
+| 180,224 | 약 5,548 |
+
+따라서 나중에 기술적으로는 대형 batch SFT도 가능합니다. 다만 그 경우에는 다음을 같이 조정해야 합니다.
+
+- LR을 유지할지, batch scaling에 맞춰 바꿀지
+- SFT epoch 수를 늘릴지
+- response token 비율이 충분한지
+- formatting/tool-call exact match가 실제로 좋아지는지
+- 큰 batch로 broad SFT 후 작은 batch로 final polish를 할지
+
+실무적으로는 다음 순서가 합리적입니다.
+
+| 단계 | batch 방향 | 목적 |
+|---|---|---|
+| broad SFT | `65k~131k`까지 실험 가능 | 넓은 고품질 instruction 행동 주입 |
+| final tool/terminal/Korean polish | `16k~32k` 우선 | 형식, 말투, exactness, 오류 복구 보정 |
+| PT급 large-batch SFT | 가능하나 실험 필요 | 빠르고 부드러운 보정, update 수 부족 위험 |
+
+즉 나중에 큰 batch SFT는 기술적으로 열려 있습니다. 다만 SFT가 “섬세한 행동 보정”이라는 점 때문에 무조건 큰 batch가 정답은 아닙니다.
+
+## Optimizer And Resume Difference
+
+PT continuation에서는 보통 optimizer state까지 이어갑니다. 이때 AdamATan2 state와 EMA가 같이 유지되어 긴 pretraining trajectory가 이어집니다.
+
+SFT에서는 두 선택지가 있습니다.
+
+| 방식 | 설정 | 의미 |
+|---|---|---|
+| optimizer까지 이어받기 | `weights_only_resume_from_ema=false` | PT momentum/optimizer trajectory 유지 |
+| EMA weight만 가져오고 optimizer reset | `weights_only_resume_from_ema=true` | 깨끗한 fine-tune 시작 |
+
+최종 SFT는 보통 두 번째가 더 자연스럽습니다. SFT는 pretraining의 다음 token distribution을 그대로 더 밀기보다, selected weight에서 작은 LR로 행동을 정렬하는 성격이 강하기 때문입니다.
+
+## Evaluation Difference
+
+PT와 SFT는 loss가 같아도 평가 기준이 다릅니다.
+
+PT에서 보는 것:
+
+- train loss 하락 안정성
+- token accuracy
+- OOM 없이 긴 run이 유지되는지
+- broad validation/eval 성능
+- checkpoint resume 안정성
+
+SFT에서 추가로 봐야 하는 것:
+
+- 한국어 존댓말/응답 스타일
+- tool-call JSON validity
+- terminal command/action exactness
+- multi-turn 지시 이행
+- 코드 수정 task 성공률
+- 불필요한 reasoning 노출 여부
+- benchmark/eval contamination 회피
+
+그래서 SFT는 loss만 낮다고 성공이 아닙니다. response formatting과 실제 task success를 반드시 같이 봐야 합니다.
 
 ## Not Sample Count
 
