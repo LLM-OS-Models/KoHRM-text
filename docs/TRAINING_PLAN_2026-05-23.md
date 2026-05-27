@@ -2,7 +2,7 @@
 
 작성일: 2026-05-23
 
-최신 데이터 mix 기준 문서: `HRM-Text/PRETRAINING_SFT_DATA_MIX_2026-05-23.md`
+최신 데이터 mix 기준 문서: [PRETRAINING_SFT_DATA_MIX_2026-05-23.md](PRETRAINING_SFT_DATA_MIX_2026-05-23.md)
 
 ## 현재 진행 상태
 

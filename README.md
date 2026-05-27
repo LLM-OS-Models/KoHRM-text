@@ -1,12 +1,13 @@
 # KoHRM-Text
 
-`KoHRM-Text-1.4B`는 `sapientinc/HRM-Text` 학습 구조를 기반으로, 한국어/영어/코드/터미널/툴콜을 잘 처리하도록 새로 학습 중인 scratch model입니다.
+`KoHRM-Text-1.4B`는 [`sapientinc/HRM-Text`](https://github.com/sapientinc/HRM-Text)를 fork해서 만든 작업 저장소에서 학습 중인 scratch model입니다. 원본 HRM-Text의 PrefixLM/HRM 학습 구조를 유지하면서, 한국어/영어/코드/터미널/툴콜을 잘 처리하도록 tokenizer, 데이터 mix, 운영 문서를 KoHRM 목적에 맞게 확장했습니다.
 
-원본 HRM-Text README는 [UPSTREAM_README.md](UPSTREAM_README.md)에 보존했습니다.
+원본 HRM-Text README는 [docs/UPSTREAM_README.md](docs/UPSTREAM_README.md)에 보존했습니다.
 
 ## 빠른 이동
 
 - [현재 모델](#현재-모델)
+- [포크 출처와 차이점](#포크-출처와-차이점)
 - [핵심 개념](#핵심-개념)
 - [학습 상태](#학습-상태)
 - [문서 지도](#문서-지도)
@@ -30,6 +31,36 @@ GitHub:      https://github.com/LLM-OS-Models/KoHRM-text.git
 ```
 
 이 모델은 `sapientinc/HRM-Text-1B` 가중치를 이어 학습한 모델이 아닙니다. 한국어/터미널용 131K 토크나이저와 새 데이터 mix로 처음부터 학습합니다.
+
+## 포크 출처와 차이점
+
+이 저장소는 원본 [`sapientinc/HRM-Text`](https://github.com/sapientinc/HRM-Text)를 기반으로 합니다. 따라서 핵심 학습 코드의 방향은 HRM-Text 논문과 upstream 구현을 따릅니다.
+
+그대로 유지한 부분:
+
+```text
+HRM recurrent architecture
+PrefixLM attention
+instruction -> response V1Dataset format
+response-only loss
+Adam-atan2 optimizer
+EMA checkpointing
+bf16/FSDP2 training path
+```
+
+KoHRM에서 바꾼 부분:
+
+```text
+model target:     Korean / English / code / terminal / tool-call
+tokenizer:        upstream 65K BPE -> KoHRM 131K byte-level BPE
+training origin:  upstream weight continuation 아님, scratch training
+model size:       1.4B급, 큰 vocab 때문에 upstream 1B보다 큼
+data mix:         HRM cleaned + Korean legal/wiki/finance + terminal/tool/code data
+operation:        staged continuation, checkpoint upload watcher, HF prepared dataset 공개
+documentation:    KoHRM 운영/데이터/아키텍처 문서를 docs/에 별도 정리
+```
+
+따라서 이 repo는 단순 README 수정본이 아니라, 원본 HRM-Text 학습 스택을 KoHRM 데이터와 토크나이저로 재학습하기 위한 fork입니다.
 
 ## 핵심 개념
 
@@ -64,7 +95,7 @@ response
 raw data -> tokenizer -> V1Dataset -> PrefixLM batches -> HRM H/L recurrence -> LM head -> response loss
 ```
 
-처음 읽는 사람은 [MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md](MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md)를 먼저 보면 됩니다. 학습 방식, PrefixLM, HRM 구조, PT/SFT 차이, stage pass 개념을 한 문서에 정리했습니다.
+처음 읽는 사람은 [docs/MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md](docs/MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md)를 먼저 보면 됩니다. 학습 방식, PrefixLM, HRM 구조, PT/SFT 차이, stage pass 개념을 한 문서에 정리했습니다.
 
 ## 학습 상태
 
@@ -94,75 +125,77 @@ pass 2: data 1 완료, data 2 진행 중
 pass 3: data 1/2/3/4 예약
 ```
 
-세부 checkpoint map은 [EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)를 기준으로 봅니다.
+세부 checkpoint map은 [docs/EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](docs/EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)를 기준으로 봅니다.
 
 ## 문서 지도
 
+문서는 [docs/](docs/)에 모았습니다. 전체 인덱스는 [docs/README.md](docs/README.md)를 봅니다.
+
 ### 처음 읽기
 
-- [MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md](MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md)
+- [docs/MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md](docs/MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md)
 
   모델 구조, PrefixLM, response-only loss, PT/SFT 관계, staged continuation 설명입니다.
 
-- [METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md)
+- [docs/METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](docs/METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md)
 
   HRM-Text 논문 방식과 KoHRM 적용 차이를 정리했습니다.
 
-- [BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md](BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md)
+- [docs/BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md](docs/BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md)
 
   pretraining/SFT batch size, token-based batch, context length 4096의 의미입니다.
 
 ### 데이터와 학습 계획
 
-- [PRETRAINING_SFT_DATA_MIX_2026-05-23.md](PRETRAINING_SFT_DATA_MIX_2026-05-23.md)
+- [docs/PRETRAINING_SFT_DATA_MIX_2026-05-23.md](docs/PRETRAINING_SFT_DATA_MIX_2026-05-23.md)
 
   사전학습/SFT 데이터 구성, 비중, 제외 기준입니다.
 
-- [TRAINING_PLAN_2026-05-23.md](TRAINING_PLAN_2026-05-23.md)
+- [docs/TRAINING_PLAN_2026-05-23.md](docs/TRAINING_PLAN_2026-05-23.md)
 
   전체 학습 전략, 토크나이저, 실행 정책입니다.
 
-- [STAGED_TRAINING_RUNBOOK_2026-05-23.md](STAGED_TRAINING_RUNBOOK_2026-05-23.md)
+- [docs/STAGED_TRAINING_RUNBOOK_2026-05-23.md](docs/STAGED_TRAINING_RUNBOOK_2026-05-23.md)
 
   완료된 전처리 데이터부터 학습하고, 새 데이터가 생기면 이어 학습하는 절차입니다.
 
-- [EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)
+- [docs/EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](docs/EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)
 
   데이터 1/2/3/4 pass 기준으로 stage와 checkpoint를 찾는 문서입니다.
 
 ### 운영과 품질 확인
 
-- [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md)
+- [docs/TRAINING_OPERATIONS_LOG_2026-05-26.md](docs/TRAINING_OPERATIONS_LOG_2026-05-26.md)
 
   장기 학습 운영 로그, stage chain, 업로드 watcher, 속도 분석입니다.
 
-- [CHAIN_HANDOFF_STATUS_2026-05-26.md](CHAIN_HANDOFF_STATUS_2026-05-26.md)
+- [docs/CHAIN_HANDOFF_STATUS_2026-05-26.md](docs/CHAIN_HANDOFF_STATUS_2026-05-26.md)
 
   stage handoff 상태, stage 이름, 용량, ETA, watcher 보정 기록입니다.
 
-- [TRAINING_LOSS_ANALYSIS_2026-05-26.md](TRAINING_LOSS_ANALYSIS_2026-05-26.md)
+- [docs/TRAINING_LOSS_ANALYSIS_2026-05-26.md](docs/TRAINING_LOSS_ANALYSIS_2026-05-26.md)
 
   train loss와 token accuracy 해석, 계속 진행 여부 판단입니다.
 
-- [VRAM_OOM_NOTES_2026-05-24.md](VRAM_OOM_NOTES_2026-05-24.md)
+- [docs/VRAM_OOM_NOTES_2026-05-24.md](docs/VRAM_OOM_NOTES_2026-05-24.md)
 
   VRAM 증가/OOM 원인과 batch 정책입니다.
 
 ### 공개용 카드와 인벤토리
 
-- [MODEL_CARD_KoHRM-Text-1.4B.md](MODEL_CARD_KoHRM-Text-1.4B.md)
+- [docs/MODEL_CARD_KoHRM-Text-1.4B.md](docs/MODEL_CARD_KoHRM-Text-1.4B.md)
 
   Hugging Face model card 초안입니다.
 
-- [HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md](HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md)
+- [docs/HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md](docs/HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md)
 
   Hugging Face prepared dataset card 초안입니다.
 
-- [AVAILABLE_DATA.md](AVAILABLE_DATA.md)
+- [docs/AVAILABLE_DATA.md](docs/AVAILABLE_DATA.md)
 
   로컬 데이터 인벤토리와 용량입니다.
 
-- [PROGRESS_2026-05-23.md](PROGRESS_2026-05-23.md)
+- [docs/PROGRESS_2026-05-23.md](docs/PROGRESS_2026-05-23.md)
 
   실제 진행 로그입니다.
 
@@ -181,7 +214,7 @@ koterm_korean_tool_finance_mix_v1                  3.02B tokens
 sft_bcai_finance_kor_v1                            857.7M tokens
 ```
 
-전체 데이터 설명과 비중은 [PRETRAINING_SFT_DATA_MIX_2026-05-23.md](PRETRAINING_SFT_DATA_MIX_2026-05-23.md)를 봅니다.
+전체 데이터 설명과 비중은 [docs/PRETRAINING_SFT_DATA_MIX_2026-05-23.md](docs/PRETRAINING_SFT_DATA_MIX_2026-05-23.md)를 봅니다.
 
 평가 오염 위험이 있는 데이터는 train에서 제외합니다. 예: `tb2_lite`, Terminal Bench 2, ToolBench eval, chi-bench 평가 split.
 

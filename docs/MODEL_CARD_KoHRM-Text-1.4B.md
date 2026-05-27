@@ -69,7 +69,7 @@ schedule: H2L3 recurrent computation
 
 For a readable full explanation of the training method, architecture, PT/SFT distinction, staged continuation, and checkpoint naming, see the project document:
 
-`MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md` in https://github.com/LLM-OS-Models/KoHRM-text
+[MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md](MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md) in https://github.com/LLM-OS-Models/KoHRM-text
 
 ### Important Compatibility Note
 
@@ -466,7 +466,7 @@ schedule: H2L3 recurrent computation
 
 학습 방식, 아키텍처, PT/SFT 차이, staged continuation, checkpoint 이름을 쉽게 풀어 쓴 전체 설명은 프로젝트 문서를 기준으로 보면 됩니다.
 
-`MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md` in https://github.com/LLM-OS-Models/KoHRM-text
+[MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md](MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md) in https://github.com/LLM-OS-Models/KoHRM-text
 
 ### 중요한 호환성 안내
 

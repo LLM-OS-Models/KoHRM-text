@@ -6,7 +6,7 @@
 > instruction-response / PrefixLM 포맷으로 변환한다.
 >
 > 사전학습/SFT 데이터 mix의 최신 기준은
-> `HRM-Text/PRETRAINING_SFT_DATA_MIX_2026-05-23.md`에 별도로 정리했다.
+> [PRETRAINING_SFT_DATA_MIX_2026-05-23.md](PRETRAINING_SFT_DATA_MIX_2026-05-23.md)에 별도로 정리했다.
 
 ## 다운로드 현황
 

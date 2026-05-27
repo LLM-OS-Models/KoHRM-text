@@ -82,7 +82,7 @@ For multi-node runs, mount the same shared workspace on every node. Keeping the 
 
 #### Alternative: Install from Source
 
-If you are not using Docker, first install PyTorch, CUDA, and FlashAttention 3. The tested versions are documented in [`docker/Dockerfile`](docker/Dockerfile).
+If you are not using Docker, first install PyTorch, CUDA, and FlashAttention 3. The tested versions are documented in [`docker/Dockerfile`](../docker/Dockerfile).
 
 Then install the Python dependencies:
 
@@ -195,13 +195,13 @@ torchrun --nproc_per_node=8 pretrain.py \
 ## Status
 
 - Training, checkpointing, and evaluation are implemented in this repository.
-- Transformers-format export is implemented in [`conversion/convert_to_hf.py`](conversion/convert_to_hf.py).
+- Transformers-format export is implemented in [`conversion/convert_to_hf.py`](../conversion/convert_to_hf.py).
 - Native Transformers model support is merged and scheduled for the next release.
 - Native vLLM support for HRM-Text checkpoints is in progress.
 
 ## Training Overrides
 
-The default pretraining config is [`config/cfg_pretrain.yaml`](config/cfg_pretrain.yaml):
+The default pretraining config is [`config/cfg_pretrain.yaml`](../config/cfg_pretrain.yaml):
 
 If `project_name`, `run_name`, or `checkpoint_path` are omitted, rank 0 derives them from the dataset path, architecture name, and a generated slug.
 
@@ -216,7 +216,7 @@ torchrun --nproc_per_node=8 pretrain.py \
 
 ## Model Configurations
 
-Architectures live under [`config/arch/net`](config/arch/net):
+Architectures live under [`config/arch/net`](../config/arch/net):
 
 | Config | Model |
 | --- | --- |
@@ -227,7 +227,7 @@ Architectures live under [`config/arch/net`](config/arch/net):
 | `rins` | Recursive Inference Scaling (RINS) baseline |
 | `ut` | Universal Transformer baseline |
 
-Sizes live under [`config/arch/size`](config/arch/size):
+Sizes live under [`config/arch/size`](../config/arch/size):
 
 | Config | Layers | Hidden | Heads |
 | --- | ---: | ---: | ---: |
@@ -257,13 +257,13 @@ HRM-Text/
 
 ## Technical Notes
 
-- [`dataset_new.py`](dataset_new.py) loads sampled `tokens.npy` and per-epoch index arrays, builds PrefixLM batches, masks instruction tokens by default, and emits FlashAttention sequence metadata.
-- [`multipack_sampler.py`](multipack_sampler.py) implements distributed multipack batching with LPT allocation to improve token-slot utilization and balance quadratic attention work.
-- [`models/flash_attention_prefixlm_v2.py`](models/flash_attention_prefixlm_v2.py) implements the two-pass PrefixLM attention path: one bidirectional pass over the prefix region and one causal pass over the response region.
-- [`models/layers.py`](models/layers.py) contains RoPE, gated multi-head attention, SwiGLU MLPs, static KV cache helpers, and initialization utilities.
-- [`models/baselines/hrm_nocarry_bp_warmup.py`](models/baselines/hrm_nocarry_bp_warmup.py) contains the main HRM-Text architecture.
-- [`models/lm_head.py`](models/lm_head.py) attaches scaled embeddings, the output head, cross-entropy loss, token accuracy, and sequence exact accuracy.
-- [`pretrain.py`](pretrain.py) handles FSDP2 wrapping, optimizer creation, LR schedule, W&B logging, code/config snapshots, and distributed checkpointing.
+- [`dataset_new.py`](../dataset_new.py) loads sampled `tokens.npy` and per-epoch index arrays, builds PrefixLM batches, masks instruction tokens by default, and emits FlashAttention sequence metadata.
+- [`multipack_sampler.py`](../multipack_sampler.py) implements distributed multipack batching with LPT allocation to improve token-slot utilization and balance quadratic attention work.
+- [`models/flash_attention_prefixlm_v2.py`](../models/flash_attention_prefixlm_v2.py) implements the two-pass PrefixLM attention path: one bidirectional pass over the prefix region and one causal pass over the response region.
+- [`models/layers.py`](../models/layers.py) contains RoPE, gated multi-head attention, SwiGLU MLPs, static KV cache helpers, and initialization utilities.
+- [`models/baselines/hrm_nocarry_bp_warmup.py`](../models/baselines/hrm_nocarry_bp_warmup.py) contains the main HRM-Text architecture.
+- [`models/lm_head.py`](../models/lm_head.py) attaches scaled embeddings, the output head, cross-entropy loss, token accuracy, and sequence exact accuracy.
+- [`pretrain.py`](../pretrain.py) handles FSDP2 wrapping, optimizer creation, LR schedule, W&B logging, code/config snapshots, and distributed checkpointing.
 
 ## Contributions
 
