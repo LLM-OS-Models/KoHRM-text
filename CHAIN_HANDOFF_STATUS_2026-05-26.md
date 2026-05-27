@@ -115,3 +115,70 @@
 2. `stage1b` final checkpoint 생성 확인
 3. handoff watcher가 `stage2b-hrm-full-nocap-extra-epoch1`를 실제 stage1b `global_step`으로 시작했는지 확인
 4. `stage2b` 시작 직후 GPU 8장 99% 사용률 확인
+
+## 2026-05-27 Stage2b And Extended Chain Update
+
+기준 시각: 2026-05-27 14:30 KST 전후
+
+`stage1b-hrm-fastcap-repeat`는 완료됐고 final checkpoint는 다음 위치에 생성됐습니다.
+
+```text
+/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage1b-hrm-fastcap-repeat-gbs180/fsdp2_epoch_1
+```
+
+`epoch_1_info.json` 기준 실제 완료 step은 다음과 같습니다.
+
+| 항목 | 값 |
+|---|---:|
+| stage1b final `global_step` | 317,814 |
+| stage1b `skip_batches_hint` | 80,622 |
+| global batch | 180,224 |
+
+현재 실행 stage는 `stage2b-hrm-full-nocap-extra-epoch1`입니다.
+
+| 항목 | 값 |
+|---|---:|
+| 현재 stage | `stage2b-hrm-full-nocap-extra-epoch1` |
+| data | `koterm_hrm_cleaned_full_nocap_extra_epochs_1_3_v1` |
+| resume_from | `KoHRM-Text-1.4B-stage1b-hrm-fastcap-repeat-gbs180` |
+| resume_step_offset | 317,814 |
+| global_batch_size | 180,224 |
+| local token slots/GPU | 22,528 |
+| model context length | 4,096 |
+| checkpoint_step_interval | 10,000 |
+| checkpoint_keep_last | 2 |
+
+Stage2b 시작 직후 기존 cleanup 명령이 너무 넓게 매칭되어 stage2b 프로세스를 한 번 SIGTERM했습니다. 원인은 cleanup pattern에 `stage1b` checkpoint path가 포함됐고, stage2b command line에도 `resume_from=...stage1b...`가 들어 있었기 때문입니다. 이 프로세스는 resume/load 직후였고, stage1b final checkpoint는 이미 완료된 상태였기 때문에 checkpoint/data 손상은 없습니다. 즉시 stage2b를 같은 `resume_step_offset=317814`로 재시작했습니다.
+
+재발 방지 조치:
+
+1. `pkill -f` broad pattern을 쓰지 않고 watcher PID만 명시적으로 종료합니다.
+2. `scripts/watch_stage2b_then_finish_chain.py`는 active run marker를 `+run_name=KoHRM-Text-1.4B-stage2b-hrm-full-nocap-extra-epoch1`로 좁혀 봅니다.
+3. stage 종료 후 checkpoint 파일만 보지 않고 해당 stage의 torchrun/pretrain process exit까지 확인한 뒤 다음 stage를 시작합니다.
+4. 두 번째 repeat stage는 기존 checkpoint 이름을 덮어쓰지 않도록 `stage1c/stage2c/stage3c/stage4c` 이름을 씁니다.
+
+현재 watcher는 다음 체인을 예약합니다.
+
+```text
+stage2b(active)
+-> stage3b-local-terminal-repeat
+-> stage4b-korean-tool-finance-repeat
+-> stage1c-hrm-fastcap-repeat2
+-> stage2c-hrm-full-nocap-repeat2
+-> stage3c-local-terminal-repeat2
+-> stage4c-korean-tool-finance-repeat2
+```
+
+각 stage의 token/step 기준은 다음과 같습니다.
+
+| Stage | Data | Metadata tokens | Planned steps |
+|---|---|---:|---:|
+| `stage2b-hrm-full-nocap-extra-epoch1` | `koterm_hrm_cleaned_full_nocap_extra_epochs_1_3_v1` | 14.554B | 80,753 |
+| `stage3b-local-terminal-repeat` | `local_terminal_conversations_ctx9k_resp6k_v1` | 9.387B | 52,082 |
+| `stage4b-korean-tool-finance-repeat` | `koterm_korean_tool_finance_mix_v1` | 3.021B | 16,759 |
+| `stage1c-hrm-fastcap-repeat2` | `koterm_hrm_cleaned_fastcap_stage1_v1` | 14.554B | 80,756 |
+| `stage2c-hrm-full-nocap-repeat2` | `koterm_hrm_cleaned_full_nocap_v1` | 14.554B | 80,753 |
+| `stage3c-local-terminal-repeat2` | `local_terminal_conversations_ctx9k_resp6k_v1` | 9.387B | 52,082 |
+| `stage4c-korean-tool-finance-repeat2` | `koterm_korean_tool_finance_mix_v1` | 3.021B | 16,759 |
+
+Batch/context 상세 설명은 [BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md](BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md)에 별도로 정리했습니다.

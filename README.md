@@ -36,6 +36,7 @@
 | [HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md](HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md) | HF prepared dataset card 초안 |
 | [METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md) | HRM-Text 논문 방식, PrefixLM, 아키텍처 적용 방식 |
 | [VRAM_OOM_NOTES_2026-05-24.md](VRAM_OOM_NOTES_2026-05-24.md) | VRAM 증가/OOM 원인과 batch 정책 |
+| [BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md](BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md) | pretraining/SFT batch size 차이, token-based batch, 현재 context length |
 | [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md) | stage2 완료 후 stage3/4/1/2/3/4 체인 운영 로그, 업로드 watcher, 속도 분석 |
 | [CHAIN_HANDOFF_STATUS_2026-05-26.md](CHAIN_HANDOFF_STATUS_2026-05-26.md) | stage1b 이후 이어학습 handoff 상태, stage 이름, 용량, ETA, watcher 보정 |
 | [TRAINING_LOSS_ANALYSIS_2026-05-26.md](TRAINING_LOSS_ANALYSIS_2026-05-26.md) | stage1/stage2/stage3 train loss와 accuracy 해석, 계속 진행 여부 판단 |
@@ -145,23 +146,24 @@ prepared dataset 공개용 업로드도 병렬로 진행합니다.
 
 ## 현재 실행 상태
 
-2026-05-26 17:17 KST 기준 실제 실행은 `stage1b-hrm-fastcap-repeat`입니다. `stage3-local-terminal`과 `stage4-korean-tool-finance`는 완료됐고, 현재는 stage4 final checkpoint에서 이어받은 stage1b가 8 x H200에서 실행 중입니다. 자세한 운영 기록과 handoff 상태는 [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md)와 [CHAIN_HANDOFF_STATUS_2026-05-26.md](CHAIN_HANDOFF_STATUS_2026-05-26.md)를 봅니다.
+2026-05-27 KST 기준 실제 실행은 `stage2b-hrm-full-nocap-extra-epoch1`입니다. `stage1b-hrm-fastcap-repeat` final checkpoint에서 이어받아 8 x H200으로 실행 중입니다. 자세한 batch/context 설명은 [BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md](BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md), 운영 기록과 handoff 상태는 [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md)와 [CHAIN_HANDOFF_STATUS_2026-05-26.md](CHAIN_HANDOFF_STATUS_2026-05-26.md)를 봅니다.
 
 현재 운영 요약:
 
 | 항목 | 값 |
 |---|---:|
-| 현재 stage | `stage1b-hrm-fastcap-repeat` |
-| 현재 global step | 240,905 |
-| stage1b 진행률 | 2026-05-26 17:17 KST 기준 3,713 / 80,756 = 4.60% |
+| 현재 stage | `stage2b-hrm-full-nocap-extra-epoch1` |
+| resume step | 317,814 |
 | global batch | 180,224 tokens |
+| local token slots/GPU | 22,528 |
+| context length | 4,096 tokens |
 | 실측 속도 | 약 1.02 step/s |
 | 처리량 | 약 0.66B tokens/hour |
-| stage1b 예상 종료 | 2026-05-27 14:16 KST 전후 |
-| 전체 chain 예상 종료 | 2026-05-29 07:00 KST 전후 |
+| stage2b 예상 종료 | 2026-05-28 오후 KST 전후 |
+| 확장 chain 예상 종료 | 2026-05-31 전후 |
 | 중간 checkpoint upload | `scripts/watch_chain_step_checkpoints_upload.py`로 190000 step 이후 자동 업로드 |
 
-이어학습 handoff는 보정했습니다. 기존 recovery watcher PID `1672885`는 `SIGSTOP` 상태로 멈췄고, 새 `scripts/watch_stage1b_then_finish_chain.py` watcher가 stage1b final checkpoint를 기다립니다. stage1b 종료 후 다음 stage는 metadata 추정 step이 아니라 checkpoint의 실제 `epoch_1_info.json` `global_step`으로 이어갑니다.
+이어학습 handoff는 보정했습니다. 현재 `scripts/watch_stage2b_then_finish_chain.py` watcher가 stage2b final checkpoint를 기다리고, 이후 `stage3b -> stage4b -> stage1c -> stage2c -> stage3c -> stage4c`를 이어서 실행합니다. 다음 stage는 metadata 추정 step이 아니라 checkpoint의 실제 `epoch_1_info.json` `global_step`으로 이어갑니다.
 
 train loss와 token accuracy는 현재까지 정상입니다. stage3는 local-terminal domain shift 때문에 초반 loss가 높게 시작했지만, 2026-05-26 02:08 KST 기준 first 100 avg loss `1.1249`에서 last 100 avg loss `0.7240`으로 내려갔고, token accuracy도 `0.7167`에서 `0.7895`로 올랐습니다. 자세한 해석은 [TRAINING_LOSS_ANALYSIS_2026-05-26.md](TRAINING_LOSS_ANALYSIS_2026-05-26.md)를 봅니다.
 

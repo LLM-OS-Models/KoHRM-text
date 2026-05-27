@@ -344,11 +344,13 @@ H200은 GPU당 VRAM과 memory bandwidth가 더 좋지만, GPU 수가 절반입�
 | `scripts/watch_stage2_then_two_pass_chain.py` | stage2 종료 후 `3 -> 4 -> 1 -> 2 -> 3 -> 4` chain orchestration |
 | `scripts/watch_stage3_then_finish_chain.py` | stage3가 이미 시작된 경우 이후 chain을 복구/연결 |
 | `scripts/watch_stage1b_then_finish_chain.py` | stage1b 이후 실제 checkpoint global_step 기준으로 `stage2b -> stage3b -> stage4b`를 이어가는 handoff watcher |
+| `scripts/watch_stage2b_then_finish_chain.py` | 수동 재시작된 stage2b 이후 `3b -> 4b -> 1c -> 2c -> 3c -> 4c`를 이어가는 watcher |
 | `scripts/watch_chain_step_checkpoints_upload.py` | `fsdp2_step_*` 중간 checkpoint 자동 업로드 |
 | `scripts/build_hrm_extra_sample_epochs.py` | HRM full/no-cap extra epoch dataset 구성 |
 | `conversion/convert_to_hf.py` | `--ckpt_step` 변환 지원 |
 | `simple_inference_engine.py` | step checkpoint load와 tokenizer path 처리 보강 |
 | `MODEL_CARD_KoHRM-Text-1.4B.md` | 최신 public artifact 설명 갱신 |
+| `BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md` | pretraining/SFT batch size와 현재 context length 설명 |
 
 ## Stage1b Handoff Fix
 
@@ -431,3 +433,37 @@ stage1b final checkpoint 감지
 ```text
 모델 weight resume 자체는 stage4 checkpoint에서 정상적으로 이어졌습니다. 이번 수정의 핵심은 다음 stage들의 global step 이름과 resume offset을 실제 checkpoint 기준으로 맞춰, 이후 stage2b/stage3b/stage4b가 중복 실행되거나 잘못된 step label로 이어지지 않게 하는 것입니다.
 ```
+
+## 2026-05-27 Batch/Context And Stage2b Watcher Update
+
+사용자 질문에 맞춰 SFT batch와 pretraining batch의 관계를 정리했습니다.
+
+결론:
+
+- 둘 다 같은 코드의 `global_batch_size`이며 단위는 sample count가 아니라 token slots입니다.
+- pretraining은 현재 `global_batch_size=180224`를 사용합니다.
+- 8 GPU 기준 local token slots는 `22528`입니다.
+- SFT 기본 config는 `global_batch_size=32768`입니다.
+- 완전히 다른 개념은 아니지만 SFT는 update 수, 낮은 learning rate, response-only supervised token 비율 때문에 별도 하이퍼파라미터로 취급합니다.
+- 현재 실제 model context length는 `4096 tokens`입니다.
+- prepared metadata에는 `max_seq_len=4097`이 저장되지만 `dataset_new.py`가 autoregressive shift 때문에 1을 빼서 모델에는 `4096`으로 들어갑니다.
+
+문서:
+
+```text
+BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md
+```
+
+또한 stage2b 이후 watcher를 확장했습니다. 기존 stage2b watcher는 `stage3b -> stage4b`만 예약했으나, 현재 요구사항에 맞춰 다음처럼 이어갑니다.
+
+```text
+stage2b(active)
+-> stage3b-local-terminal-repeat
+-> stage4b-korean-tool-finance-repeat
+-> stage1c-hrm-fastcap-repeat2
+-> stage2c-hrm-full-nocap-repeat2
+-> stage3c-local-terminal-repeat2
+-> stage4c-korean-tool-finance-repeat2
+```
+
+기존 `stage1b/stage2b/stage3b/stage4b` checkpoint directory를 덮어쓰지 않기 위해 두 번째 repeat에는 `c` suffix stage 이름을 사용합니다. 현재 학습 프로세스는 건드리지 않고 watcher PID만 교체했습니다.
