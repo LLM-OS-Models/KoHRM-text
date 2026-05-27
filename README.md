@@ -12,6 +12,7 @@
 - [학습 상태](#학습-상태)
 - [문서 지도](#문서-지도)
 - [데이터](#데이터)
+- [SFT/RL 후보](#sftrl-후보)
 - [토크나이저](#토크나이저)
 - [운영 메모](#운영-메모)
 
@@ -159,6 +160,18 @@ pass 3: data 1/2/3/4 예약
 
   완료된 전처리 데이터부터 학습하고, 새 데이터가 생기면 이어 학습하는 절차입니다.
 
+- [docs/SFT_RL_CANDIDATE_PREP_2026-05-28.md](docs/SFT_RL_CANDIDATE_PREP_2026-05-28.md)
+
+  SFT/LoRA/RL 후보 데이터, 전처리 산출물, 사용 순서를 정리했습니다.
+
+- [docs/LORA_TRAINING_GUIDE_2026-05-28.md](docs/LORA_TRAINING_GUIDE_2026-05-28.md)
+
+  후보별 KoHRM LoRA 학습 실행법과 산출물 구조를 정리했습니다.
+
+- [docs/UPSTREAM_SFT_INFERENCE_STATUS_2026-05-28.md](docs/UPSTREAM_SFT_INFERENCE_STATUS_2026-05-28.md)
+
+  upstream/논문 기준 SFT, vLLM, CPU 실행 지원 여부를 정리했습니다.
+
 - [docs/EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](docs/EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)
 
   데이터 1/2/3/4 pass 기준으로 stage와 checkpoint를 찾는 문서입니다.
@@ -217,6 +230,21 @@ sft_bcai_finance_kor_v1                            857.7M tokens
 전체 데이터 설명과 비중은 [docs/PRETRAINING_SFT_DATA_MIX_2026-05-23.md](docs/PRETRAINING_SFT_DATA_MIX_2026-05-23.md)를 봅니다.
 
 평가 오염 위험이 있는 데이터는 train에서 제외합니다. 예: `tb2_lite`, Terminal Bench 2, ToolBench eval, chi-bench 평가 split.
+
+## SFT/RL 후보
+
+pretraining 이후에는 전체 데이터를 다시 SFT하지 않고, 행동 품질을 맞출 subset만 사용합니다. 지금 만든 prepared 후보는 다음입니다.
+
+```text
+kohrm_sft_behavior_mini_v1         60.0M tokens
+kohrm_sft_terminal_tool_core_v1   165.0M tokens
+kohrm_sft_korean_domain_core_v1   100.0M tokens
+kohrm_sft_behavior_core_v1        285.0M tokens
+```
+
+권장 순서는 `behavior_mini`로 LoRA/짧은 SFT smoke를 먼저 보고, terminal/tool 형식이 부족하면 `terminal_tool_core`, 한국어 도메인 응답이 부족하면 `korean_domain_core`, 전체 행동 보정이 필요하면 `behavior_core`로 확장하는 방식입니다.
+
+자세한 기준은 [docs/SFT_RL_CANDIDATE_PREP_2026-05-28.md](docs/SFT_RL_CANDIDATE_PREP_2026-05-28.md)를 봅니다.
 
 ## 토크나이저
 

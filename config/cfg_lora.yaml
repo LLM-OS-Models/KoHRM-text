@@ -1,0 +1,46 @@
+defaults:
+  - arch/net@arch: hrm
+  - arch/size@arch: XL
+  - data: sft
+  - _self_
+
+hydra:
+  output_subdir: null
+
+resume_from: ???
+weights_only_resume_from_ema: true
+
+global_batch_size: 32768
+epochs: 1
+
+lr: 1.0e-4
+lr_min_ratio: 0.1
+lr_warmup_steps: 100
+
+weight_decay: 0.0
+beta1: 0.9
+beta2: 0.95
+ema: null
+
+checkpoint_interval: 1
+checkpoint_step_interval: null
+checkpoint_keep_last: 2
+log_interval: 5
+
+project_name: KoHRM-Text-LoRA
+run_name: null
+checkpoint_path: ???
+
+arch:
+  bp_warmup_ratio: 0.0
+
+lora:
+  rank: 16
+  alpha: 32.0
+  dropout: 0.0
+  target_suffixes:
+    - gqkv_proj
+    - o_proj
+    - gate_up_proj
+    - down_proj
+    - lm_head

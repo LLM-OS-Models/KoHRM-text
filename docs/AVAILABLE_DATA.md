@@ -17,6 +17,17 @@
 | ToolBench (data.zip) | **완료** | `/home/work/.projects/LLM-OS-Models/Terminal/HRM-Text/data_toolbench/data/` | 21G |
 | BCAI Finance Kor | **완료** | `/home/work/.data/huggingface/hrm_text_extra/finance/BCAI-Finance-Kor-1862K`, `/home/work/.data/huggingface/hrm_text_extra/finance/bcai_finance_kor_hrm_20260524.jsonl` | 원본 5.2G / HRM JSONL 5.3G |
 
+## SFT/RL 후보 prepared 데이터
+
+세부 정책과 사용 순서는 [SFT_RL_CANDIDATE_PREP_2026-05-28.md](SFT_RL_CANDIDATE_PREP_2026-05-28.md)에 정리했습니다.
+
+| 데이터 | 상태 | 절대경로 | 토큰 |
+|---|---|---|---:|
+| behavior mini | **완료** | `/home/work/.data/hrm_text_prepared/kohrm_sft_behavior_mini_v1` | 60.0M |
+| terminal/tool core | **완료** | `/home/work/.data/hrm_text_prepared/kohrm_sft_terminal_tool_core_v1` | 165.0M |
+| Korean domain core | **완료** | `/home/work/.data/hrm_text_prepared/kohrm_sft_korean_domain_core_v1` | 100.0M |
+| behavior core | **완료** | `/home/work/.data/hrm_text_prepared/kohrm_sft_behavior_core_v1` | 285.0M |
+
 ## 한국어 데이터
 
 ### 한국어 위키백과 — 1.3G bz2 / 5.9G 해제

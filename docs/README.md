@@ -30,6 +30,18 @@
 
   준비된 데이터부터 학습하고, 새 데이터가 생기면 이어 학습하는 운영 절차입니다.
 
+- [SFT_RL_CANDIDATE_PREP_2026-05-28.md](SFT_RL_CANDIDATE_PREP_2026-05-28.md)
+
+  SFT/LoRA/RL 후보 데이터, 전처리 산출물, 사용 순서를 정리합니다.
+
+- [LORA_TRAINING_GUIDE_2026-05-28.md](LORA_TRAINING_GUIDE_2026-05-28.md)
+
+  후보별 KoHRM LoRA 학습 실행법과 산출물 구조를 정리합니다.
+
+- [UPSTREAM_SFT_INFERENCE_STATUS_2026-05-28.md](UPSTREAM_SFT_INFERENCE_STATUS_2026-05-28.md)
+
+  upstream/논문 기준 SFT, vLLM, CPU 실행 지원 여부를 정리합니다.
+
 - [EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)
 
   데이터 1/2/3/4 pass 기준으로 stage와 checkpoint를 찾는 문서입니다.
