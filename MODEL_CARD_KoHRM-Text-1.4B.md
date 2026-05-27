@@ -93,6 +93,18 @@ Converted config highlights:
 }
 ```
 
+### Compared With The HRM-Text Paper
+
+This run can take longer than the paper recipe even on 8 x H200 because the setup is not identical:
+
+- The paper reference used 16 x H100; this run uses 8 x H200.
+- KoHRM uses a larger 131K tokenizer vocabulary, compared with the upstream 65K tokenizer.
+- The public KoHRM size is about 1.38B parameters.
+- The stable long-run batch is `180,224` tokens/step after OOM probing; larger batches were possible briefly but not chosen for reliability.
+- The continuation includes extra Korean, terminal, tool-call, legal, finance, wiki, and repeated HRM-cleaned stages.
+
+This does not automatically guarantee better benchmark scores. The expected upside is domain-specific: Korean tokenization efficiency, Korean legal/finance/wiki coverage, terminal trajectories, tool-call formatting, and code-oriented behavior should have a better chance than the upstream English/general checkpoint. Final claims require evaluation after the planned continuation and SFT finish.
+
 ### Tokenizer
 
 The tokenizer was trained for Korean, English, code, shell/terminal text, and JSON/tool-call formats. It keeps common chat/tool special tokens as stable single tokens where possible.
@@ -205,15 +217,95 @@ and it fails with an unknown `hrm_text` architecture, that is expected for the c
 
 ### Internal / Project-Side Generation
 
-For internal evaluation, use the project code and raw FSDP2 checkpoints:
+For actual generation today, use the project code and raw FSDP2 checkpoints. This is the currently supported copy-paste path for CUDA machines. A BF16-capable GPU with enough VRAM is recommended; Colab T4 is useful for the smoke test above, not for this raw-checkpoint generation path.
 
 ```bash
 git clone https://github.com/LLM-OS-Models/KoHRM-text
 cd KoHRM-text
+python -m venv .venv
+source .venv/bin/activate
+pip install -U pip wheel
 pip install -r requirements.txt
+pip install -U "huggingface_hub[cli]"
+export TOKENIZERS_PARALLELISM=false
+export NUMEXPR_MAX_THREADS=128
 ```
 
-Then load a raw checkpoint with `simple_inference_engine.py`. This path requires the raw checkpoint files and a CUDA environment with enough VRAM. It is not the recommended Colab T4 path yet.
+Download the latest uploaded raw checkpoint example. This example uses `stage1b-hrm-fastcap-repeat-step310000`, which is available in the raw checkpoint repo. When a newer raw checkpoint is uploaded, change both the include path and `ckpt_step`.
+
+```bash
+mkdir -p checkpoints/kohm-raw
+huggingface-cli download LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints \
+  --include "stage1b-hrm-fastcap-repeat-step310000/**" \
+  --local-dir checkpoints/kohm-raw
+```
+
+Create and run a minimal generation script:
+
+```bash
+cat > run_kohrm_raw_generate.py <<'PY'
+import os
+
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("NUMEXPR_MAX_THREADS", "128")
+
+from simple_inference_engine import inference_load_checkpoint, inference_generate
+
+ckpt_dir = "checkpoints/kohm-raw/stage1b-hrm-fastcap-repeat-step310000"
+
+prompts = [
+    (
+        0,
+        (
+            "direct",
+            "한국어 존댓말로 현재 디렉터리에서 용량이 가장 큰 파일 10개를 찾는 bash 명령을 제안해 주세요.",
+        ),
+    ),
+    (
+        1,
+        (
+            "direct",
+            "Write a Python function that validates a JSON tool-call object with name and arguments.",
+        ),
+    ),
+]
+
+ckpt = inference_load_checkpoint(
+    ckpt_path=ckpt_dir,
+    ckpt_epoch=None,
+    ckpt_step=310000,
+    ckpt_use_ema=True,
+    device="cuda",
+)
+
+for pid, text in inference_generate(
+    ckpt,
+    iter(prompts),
+    max_tokens=1024,
+    max_generation=256,
+    batch_size=1,
+    temp=0.0,
+):
+    print(f"\n### sample {pid}\n{text}")
+PY
+
+python run_kohrm_raw_generate.py
+```
+
+Prompt format is handled by `InferenceCheckpoint.tokenize_prompt`. The first tuple item is the condition string, usually `"direct"`, and the second item is the user prompt. Internally this becomes:
+
+```text
+<|im_start|><|object_ref_start|>PROMPT<|im_end|>
+```
+
+If you want to test a newer raw checkpoint:
+
+1. Check the raw checkpoint repo for the newest uploaded stage/step.
+2. Change the `huggingface-cli download --include` pattern.
+3. Change `ckpt_dir`.
+4. Change `ckpt_step`.
+
+Plain `AutoModelForCausalLM` generation from `model.safetensors` will be added later when the public `trust_remote_code` wrapper is available.
 
 ### Training Data
 
@@ -230,7 +322,7 @@ Major prepared data groups:
 | `koterm_pretrain_mix_v1` | 711.3M | stage-0/stage0b |
 | HRM cleaned fast-cap stage1/stage1b | 14.55B | HRM-style instruction pretraining |
 | HRM cleaned full/no-cap stage2 | 14.55B | completed continuation |
-| HRM cleaned full/no-cap extra stage2b | 14.55B | scheduled continuation |
+| HRM cleaned full/no-cap extra stage2b | 14.55B | active continuation |
 | Local terminal conversations | 9.39B | terminal/code/tool-heavy continuation |
 | Korean tool/legal/wiki/finance mix | 3.02B | Korean domain and tool continuation |
 | BCAI Finance Korean | 857.7M | Korean finance/domain data |
@@ -256,11 +348,15 @@ stage0
 -> stage2b
 -> stage3b
 -> stage4b
+-> stage1c
+-> stage2c
+-> stage3c
+-> stage4c
 ```
 
 The checkpoint carries model weights, optimizer state, EMA weights, and recurrent carry state. `resume_step_offset` and `total_steps_override` are used so the learning-rate schedule follows the intended longer run instead of resetting at each stage.
 
-As of 2026-05-27, `stage1b` is active and `stage2b -> stage3b -> stage4b` are scheduled through a handoff watcher. The handoff reads the actual `epoch_1_info.json` `global_step` from each completed checkpoint before starting the next stage.
+As of 2026-05-27, `stage2b` is active. The continuation watcher is scheduled to launch `stage3b -> stage4b -> stage1c -> stage2c -> stage3c -> stage4c` after each completed checkpoint. The handoff reads the actual `epoch_1_info.json` `global_step` from each completed checkpoint before starting the next stage.
 
 ### Intended Use
 
@@ -363,6 +459,18 @@ This work builds on HRM-Text:
   "prefix_lm": true
 }
 ```
+
+### HRM-Text 논문 대비
+
+현재 run은 논문 recipe보다 더 오래 걸릴 수 있습니다. 설정이 완전히 같지 않기 때문입니다.
+
+- 논문 기준은 16 x H100이고, 현재 run은 8 x H200입니다.
+- KoHRM은 원본 65K tokenizer보다 큰 131K tokenizer vocab을 씁니다.
+- 공개 KoHRM 크기는 약 1.38B parameters입니다.
+- 안정 장기 run batch는 OOM probe 이후 `180,224` tokens/step으로 잡았습니다. 더 큰 batch는 초반에 가능해 보여도 장기 안정성이 떨어졌습니다.
+- 한국어, 터미널, 툴콜, 법률, 금융, 위키, HRM-cleaned 반복 stage가 추가됐습니다.
+
+이것이 자동으로 모든 benchmark 점수 상승을 보장하지는 않습니다. 다만 한국어 토크나이저 효율, 한국어 법률/금융/위키 coverage, 터미널 trajectory, tool-call formatting, code-oriented behavior 쪽은 원본 영어/general checkpoint보다 좋아질 가능성이 있습니다. 최종 주장은 continuation과 SFT가 끝난 뒤 평가로 확인해야 합니다.
 
 ### 토크나이저
 
@@ -476,15 +584,95 @@ AutoModelForCausalLM.from_pretrained("LLM-OS-Models/KoHRM-Text-1.4B")
 
 ### 내부 / 프로젝트 코드 기반 생성
 
-내부 평가에서는 프로젝트 코드와 raw FSDP2 checkpoint를 사용합니다.
+현재 실제 generation을 하려면 프로젝트 코드와 raw FSDP2 checkpoint를 사용합니다. 이것이 지금 바로 쓸 수 있는 CUDA 환경용 경로입니다. BF16이 되는 충분한 VRAM의 GPU를 권장합니다. Colab T4는 위 smoke test에는 쓸 수 있지만, raw checkpoint generation 권장 경로는 아닙니다.
 
 ```bash
 git clone https://github.com/LLM-OS-Models/KoHRM-text
 cd KoHRM-text
+python -m venv .venv
+source .venv/bin/activate
+pip install -U pip wheel
 pip install -r requirements.txt
+pip install -U "huggingface_hub[cli]"
+export TOKENIZERS_PARALLELISM=false
+export NUMEXPR_MAX_THREADS=128
 ```
 
-그 다음 `simple_inference_engine.py`로 raw checkpoint를 로드합니다. 이 경로는 raw checkpoint 파일과 충분한 VRAM이 있는 CUDA 환경이 필요합니다. 아직 Colab T4용 권장 경로는 아닙니다.
+현재 바로 받을 수 있는 raw checkpoint 예시입니다. 아래 예시는 raw checkpoint repo에 올라온 `stage1b-hrm-fastcap-repeat-step310000`을 사용합니다. 더 최신 raw checkpoint가 올라오면 include path와 `ckpt_step`을 같이 바꾸면 됩니다.
+
+```bash
+mkdir -p checkpoints/kohm-raw
+huggingface-cli download LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints \
+  --include "stage1b-hrm-fastcap-repeat-step310000/**" \
+  --local-dir checkpoints/kohm-raw
+```
+
+최소 generation script:
+
+```bash
+cat > run_kohrm_raw_generate.py <<'PY'
+import os
+
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("NUMEXPR_MAX_THREADS", "128")
+
+from simple_inference_engine import inference_load_checkpoint, inference_generate
+
+ckpt_dir = "checkpoints/kohm-raw/stage1b-hrm-fastcap-repeat-step310000"
+
+prompts = [
+    (
+        0,
+        (
+            "direct",
+            "한국어 존댓말로 현재 디렉터리에서 용량이 가장 큰 파일 10개를 찾는 bash 명령을 제안해 주세요.",
+        ),
+    ),
+    (
+        1,
+        (
+            "direct",
+            "Write a Python function that validates a JSON tool-call object with name and arguments.",
+        ),
+    ),
+]
+
+ckpt = inference_load_checkpoint(
+    ckpt_path=ckpt_dir,
+    ckpt_epoch=None,
+    ckpt_step=310000,
+    ckpt_use_ema=True,
+    device="cuda",
+)
+
+for pid, text in inference_generate(
+    ckpt,
+    iter(prompts),
+    max_tokens=1024,
+    max_generation=256,
+    batch_size=1,
+    temp=0.0,
+):
+    print(f"\n### sample {pid}\n{text}")
+PY
+
+python run_kohrm_raw_generate.py
+```
+
+Prompt formatting은 `InferenceCheckpoint.tokenize_prompt`가 처리합니다. tuple의 첫 번째 값은 condition string이고 보통 `"direct"`를 씁니다. 두 번째 값은 사용자 prompt입니다. 내부적으로는 다음 형식이 됩니다.
+
+```text
+<|im_start|><|object_ref_start|>PROMPT<|im_end|>
+```
+
+더 최신 raw checkpoint를 테스트하려면:
+
+1. raw checkpoint repo에서 가장 최신 stage/step을 확인합니다.
+2. `huggingface-cli download --include` pattern을 바꿉니다.
+3. `ckpt_dir`를 바꿉니다.
+4. `ckpt_step`을 바꿉니다.
+
+공개 `model.safetensors`에서 바로 `AutoModelForCausalLM` generation을 하는 경로는 public `trust_remote_code` wrapper를 추가한 뒤 지원할 예정입니다.
 
 ### 학습 데이터
 
@@ -501,7 +689,7 @@ https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-prepared-data
 | `koterm_pretrain_mix_v1` | 711.3M | stage-0/stage0b |
 | HRM cleaned fast-cap stage1/stage1b | 14.55B | HRM-style instruction pretraining |
 | HRM cleaned full/no-cap stage2 | 14.55B | 완료된 continuation |
-| HRM cleaned full/no-cap extra stage2b | 14.55B | 예정된 continuation |
+| HRM cleaned full/no-cap extra stage2b | 14.55B | 진행 중인 continuation |
 | local terminal conversations | 9.39B | terminal/code/tool-heavy continuation |
 | Korean tool/legal/wiki/finance mix | 3.02B | 한국어 domain/tool continuation |
 | BCAI Finance Korean | 857.7M | 한국어 금융/domain data |
@@ -527,11 +715,15 @@ stage0
 -> stage2b
 -> stage3b
 -> stage4b
+-> stage1c
+-> stage2c
+-> stage3c
+-> stage4c
 ```
 
 checkpoint는 model weights, optimizer state, EMA weights, recurrent carry state를 이어갑니다. `resume_step_offset`과 `total_steps_override`를 써서 stage마다 learning-rate schedule이 리셋되지 않고 긴 pretraining run처럼 이어지게 합니다.
 
-2026-05-27 기준 `stage1b`가 진행 중이며, 이후 `stage2b -> stage3b -> stage4b`가 handoff watcher로 예약되어 있습니다. handoff는 각 stage의 실제 `epoch_1_info.json` `global_step`을 읽고 다음 stage를 시작합니다.
+2026-05-27 기준 `stage2b`가 진행 중입니다. continuation watcher가 이후 `stage3b -> stage4b -> stage1c -> stage2c -> stage3c -> stage4c`를 이어서 실행하도록 예약되어 있습니다. handoff는 각 stage의 실제 `epoch_1_info.json` `global_step`을 읽고 다음 stage를 시작합니다.
 
 ### 사용 목적
 
