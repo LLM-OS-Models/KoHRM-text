@@ -41,6 +41,36 @@ This repository is a rolling **latest public model export**. Training is still i
 
 The main branch is overwritten with the newest converted EMA `safetensors` export as training checkpoints are uploaded. To test the latest public weight, download `revision="main"`.
 
+### Training Method At A Glance
+
+KoHRM-Text is best understood as **instruction pretraining from scratch**.
+
+It is not ordinary raw-text causal LM pretraining, and it is not only a small SFT pass on top of an existing base model.
+
+```text
+raw data -> tokenizer -> V1Dataset -> PrefixLM batches
+         -> HRM H/L recurrence -> LM head -> response-only loss
+```
+
+The input context is handled as a PrefixLM prefix:
+
+```text
+instruction / prefix: bidirectional attention, no loss
+response:             causal attention, response-only CE loss
+```
+
+The architecture keeps the upstream HRM-Text recurrent design:
+
+```text
+H module: slower strategic state
+L module: faster execution state
+schedule: H2L3 recurrent computation
+```
+
+For a readable full explanation of the training method, architecture, PT/SFT distinction, staged continuation, and checkpoint naming, see the project document:
+
+`MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md` in https://github.com/LLM-OS-Models/KoHRM-text
+
 ### Important Compatibility Note
 
 The public repo currently contains the converted model weights and tokenizer, but it does **not yet** include a Hugging Face `trust_remote_code` modeling implementation for `HrmTextForCausalLM`.
@@ -407,6 +437,36 @@ This work builds on HRM-Text:
 - tokenizer repo: `LLM-OS-Models/HRM-Text-Ko-Terminal-Tokenizer-131K`
 
 최신 공개 weight를 테스트하려면 `revision="main"`으로 다운로드하면 됩니다. 학습 중 10,000 step 단위로 새 checkpoint가 변환되어 올라오면 같은 파일명이 최신 EMA `safetensors`로 갱신됩니다.
+
+### 학습 방식 한눈에 보기
+
+KoHRM-Text는 **scratch instruction pretraining**으로 보는 것이 가장 정확합니다.
+
+일반적인 raw-text causal LM 사전학습도 아니고, 이미 완성된 base model 위에 짧게 얹는 SFT만도 아닙니다.
+
+```text
+raw data -> tokenizer -> V1Dataset -> PrefixLM batches
+         -> HRM H/L recurrence -> LM head -> response-only loss
+```
+
+입력 컨텍스트는 PrefixLM prefix로 처리합니다.
+
+```text
+instruction / prefix: 양방향 attention, loss 없음
+response:             causal attention, response-only CE loss
+```
+
+아키텍처는 원본 HRM-Text recurrent design을 유지합니다.
+
+```text
+H module: 느리게 변하는 전략 state
+L module: 빠르게 변하는 실행 state
+schedule: H2L3 recurrent computation
+```
+
+학습 방식, 아키텍처, PT/SFT 차이, staged continuation, checkpoint 이름을 쉽게 풀어 쓴 전체 설명은 프로젝트 문서를 기준으로 보면 됩니다.
+
+`MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md` in https://github.com/LLM-OS-Models/KoHRM-text
 
 ### 중요한 호환성 안내
 

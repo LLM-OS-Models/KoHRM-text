@@ -1,245 +1,274 @@
 # KoHRM-Text
 
-2026-05-23 기준 로컬 작업 저장소입니다. 목표는 `sapientinc/HRM-Text` 구조와 PrefixLM 학습 코드를 유지하면서, 한국어/영어/코딩/터미널/툴콜을 잘 처리하는 새 `KoHRM-Text` 계열 모델을 처음부터 학습하는 것입니다.
+`KoHRM-Text-1.4B`는 `sapientinc/HRM-Text` 학습 구조를 기반으로, 한국어/영어/코드/터미널/툴콜을 잘 처리하도록 새로 학습 중인 scratch model입니다.
 
-원본 HRM-Text README는 `UPSTREAM_README.md`에 보존했습니다.
+원본 HRM-Text README는 [UPSTREAM_README.md](UPSTREAM_README.md)에 보존했습니다.
 
-## 모델 이름
+## 빠른 이동
 
-| 항목 | 값 |
-|---|---|
-| 표준 모델명 | `KoHRM-Text-1.4B` |
-| HF model repo | `LLM-OS-Models/KoHRM-Text-1.4B` |
-| GitHub repo | `https://github.com/LLM-OS-Models/KoHRM-text.git` |
-| base code | `sapientinc/HRM-Text` |
-| arch | `XL` |
-| 추정 params | 1,384,120,320 |
+- [현재 모델](#현재-모델)
+- [핵심 개념](#핵심-개념)
+- [학습 상태](#학습-상태)
+- [문서 지도](#문서-지도)
+- [데이터](#데이터)
+- [토크나이저](#토크나이저)
+- [운영 메모](#운영-메모)
 
-`KoHRM-Text-1.4B`는 새 131K tokenizer를 쓰는 scratch pretraining 모델입니다. 기존 `sapientinc/HRM-Text-1B` 가중치를 이어 쓰는 모델이 아닙니다.
+## 현재 모델
 
-## 현재 결론
+```text
+name:        KoHRM-Text-1.4B
+origin:      scratch training
+base code:   sapientinc/HRM-Text
+arch:        HRM XL
+params:      1,384,120,320
+context:     4,096 tokens
+tokenizer:   131,072 vocab byte-level BPE
+HF model:    LLM-OS-Models/KoHRM-Text-1.4B
+HF data:     LLM-OS-Models/KoHRM-Text-1.4B-prepared-data
+GitHub:      https://github.com/LLM-OS-Models/KoHRM-text.git
+```
 
-- 기존 `sapientinc/HRM-Text-1B` 평가는 완료했고, 터미널/툴콜 기준으로는 그대로 쓰기 어렵다는 판단입니다.
-- 새 tokenizer를 만들었기 때문에 기존 가중치를 이어 학습하기보다 새 pretraining으로 가는 것이 맞습니다.
-- HRM 기존 cleaned pretraining 데이터 328G는 사용합니다. 다만 기존 tokenizer의 token id를 그대로 섞지 않고, JSONL/parquet 원문에서 새 tokenizer로 다시 패킹합니다.
-- SFT 후보 데이터도 사전학습 mix에 먼저 넣습니다. 이후 같은 계열의 고품질 subset으로 SFT를 한 번 더 합니다.
-- `tb2_lite`, Terminal Bench 2, ToolBench eval, chi-bench 같은 평가 성격 데이터는 train에서 제외합니다.
+이 모델은 `sapientinc/HRM-Text-1B` 가중치를 이어 학습한 모델이 아닙니다. 한국어/터미널용 131K 토크나이저와 새 데이터 mix로 처음부터 학습합니다.
 
-## 핵심 문서
+## 핵심 개념
 
-| 문서 | 내용 |
-|---|---|
-| [PRETRAINING_SFT_DATA_MIX_2026-05-23.md](PRETRAINING_SFT_DATA_MIX_2026-05-23.md) | 사전학습/SFT 데이터 구성, 비중, 제외 기준 |
-| [TRAINING_PLAN_2026-05-23.md](TRAINING_PLAN_2026-05-23.md) | 전체 학습 전략, tokenizer, 실행 정책 |
-| [STAGED_TRAINING_RUNBOOK_2026-05-23.md](STAGED_TRAINING_RUNBOOK_2026-05-23.md) | 완료된 전처리 데이터부터 학습하고 새 데이터가 생기면 이어 학습하는 실행 절차 |
-| [MODEL_CARD_KoHRM-Text-1.4B.md](MODEL_CARD_KoHRM-Text-1.4B.md) | HF model card 초안 |
-| [HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md](HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md) | HF prepared dataset card 초안 |
-| [METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md) | HRM-Text 논문 방식, PrefixLM, 아키텍처 적용 방식 |
-| [VRAM_OOM_NOTES_2026-05-24.md](VRAM_OOM_NOTES_2026-05-24.md) | VRAM 증가/OOM 원인과 batch 정책 |
-| [BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md](BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md) | pretraining/SFT batch size 차이, token-based batch, 현재 context length |
-| [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md) | stage2 완료 후 stage3/4/1/2/3/4 체인 운영 로그, 업로드 watcher, 속도 분석 |
-| [CHAIN_HANDOFF_STATUS_2026-05-26.md](CHAIN_HANDOFF_STATUS_2026-05-26.md) | stage1b 이후 이어학습 handoff 상태, stage 이름, 용량, ETA, watcher 보정 |
-| [TRAINING_LOSS_ANALYSIS_2026-05-26.md](TRAINING_LOSS_ANALYSIS_2026-05-26.md) | stage1/stage2/stage3 train loss와 accuracy 해석, 계속 진행 여부 판단 |
-| [AVAILABLE_DATA.md](AVAILABLE_DATA.md) | 로컬 데이터 인벤토리와 용량 |
-| [PROGRESS_2026-05-23.md](PROGRESS_2026-05-23.md) | 실제 진행 로그 |
-| [UPSTREAM_README.md](UPSTREAM_README.md) | 원본 HRM-Text README |
+KoHRM-Text는 일반적인 raw-text causal LM 사전학습도 아니고, 완성된 base model 위에 얹는 전통적인 SFT만도 아닙니다.
 
-## 새 토크나이저
+```text
+raw LM PT                    KoHRM instruction PT                    conventional SFT
+---------                    ---------------------                    ----------------
+raw text                     instruction-response                     instruction-response
+all-token loss               response-only loss                       response-only loss
+from scratch                 from scratch                             from pretrained model
+broad corpus                 broad corpus + task data                 curated small data
+```
 
-| 항목 | 값 |
-|---|---|
-| 위치 | `/home/work/.data/huggingface/trained_tokenizers/hrm-ko-terminal-131k-v1` |
-| HF repo | `LLM-OS-Models/HRM-Text-Ko-Terminal-Tokenizer-131K` |
-| 방식 | byte-level BPE |
-| vocab | 131,072 |
-| normalization | NFC |
+핵심은 HRM-Text 논문식 single-stage instruction pretraining입니다.
+
+```text
+instruction / prefix
+  - 입력 컨텍스트
+  - 양방향 attention
+  - loss 없음
+
+response
+  - 모델이 맞혀야 하는 출력
+  - causal attention
+  - response-only CE loss
+```
+
+전체 구조:
+
+```text
+raw data -> tokenizer -> V1Dataset -> PrefixLM batches -> HRM H/L recurrence -> LM head -> response loss
+```
+
+처음 읽는 사람은 [MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md](MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md)를 먼저 보면 됩니다. 학습 방식, PrefixLM, HRM 구조, PT/SFT 차이, stage pass 개념을 한 문서에 정리했습니다.
+
+## 학습 상태
+
+기준: 2026-05-28 KST
+
+현재 실행은 `stage2b-hrm-full-nocap-extra-epoch1`입니다. `stage1b-hrm-fastcap-repeat` final checkpoint에서 이어받아 8 x H200으로 학습 중입니다.
+
+짧은 상태:
+
+```text
+active stage:     stage2b-hrm-full-nocap-extra-epoch1
+pass view:        pass 2, data 2
+resume step:      317,814
+global batch:     180,224 token slots/step
+per GPU batch:    22,528 token slots/step
+context length:   4,096 tokens
+speed:            about 1.02 step/s
+checkpoint:       every 10,000 steps, keep latest 2 locally
+upload:           watcher uploads selected raw + converted checkpoints
+```
+
+데이터 pass 기준:
+
+```text
+pass 1: data 1/2/3/4 완료
+pass 2: data 1 완료, data 2 진행 중
+pass 3: data 1/2/3/4 예약
+```
+
+세부 checkpoint map은 [EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)를 기준으로 봅니다.
+
+## 문서 지도
+
+### 처음 읽기
+
+- [MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md](MODEL_TRAINING_ARCHITECTURE_GUIDE_2026-05-28.md)
+
+  모델 구조, PrefixLM, response-only loss, PT/SFT 관계, staged continuation 설명입니다.
+
+- [METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md)
+
+  HRM-Text 논문 방식과 KoHRM 적용 차이를 정리했습니다.
+
+- [BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md](BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md)
+
+  pretraining/SFT batch size, token-based batch, context length 4096의 의미입니다.
+
+### 데이터와 학습 계획
+
+- [PRETRAINING_SFT_DATA_MIX_2026-05-23.md](PRETRAINING_SFT_DATA_MIX_2026-05-23.md)
+
+  사전학습/SFT 데이터 구성, 비중, 제외 기준입니다.
+
+- [TRAINING_PLAN_2026-05-23.md](TRAINING_PLAN_2026-05-23.md)
+
+  전체 학습 전략, 토크나이저, 실행 정책입니다.
+
+- [STAGED_TRAINING_RUNBOOK_2026-05-23.md](STAGED_TRAINING_RUNBOOK_2026-05-23.md)
+
+  완료된 전처리 데이터부터 학습하고, 새 데이터가 생기면 이어 학습하는 절차입니다.
+
+- [EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)
+
+  데이터 1/2/3/4 pass 기준으로 stage와 checkpoint를 찾는 문서입니다.
+
+### 운영과 품질 확인
+
+- [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md)
+
+  장기 학습 운영 로그, stage chain, 업로드 watcher, 속도 분석입니다.
+
+- [CHAIN_HANDOFF_STATUS_2026-05-26.md](CHAIN_HANDOFF_STATUS_2026-05-26.md)
+
+  stage handoff 상태, stage 이름, 용량, ETA, watcher 보정 기록입니다.
+
+- [TRAINING_LOSS_ANALYSIS_2026-05-26.md](TRAINING_LOSS_ANALYSIS_2026-05-26.md)
+
+  train loss와 token accuracy 해석, 계속 진행 여부 판단입니다.
+
+- [VRAM_OOM_NOTES_2026-05-24.md](VRAM_OOM_NOTES_2026-05-24.md)
+
+  VRAM 증가/OOM 원인과 batch 정책입니다.
+
+### 공개용 카드와 인벤토리
+
+- [MODEL_CARD_KoHRM-Text-1.4B.md](MODEL_CARD_KoHRM-Text-1.4B.md)
+
+  Hugging Face model card 초안입니다.
+
+- [HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md](HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md)
+
+  Hugging Face prepared dataset card 초안입니다.
+
+- [AVAILABLE_DATA.md](AVAILABLE_DATA.md)
+
+  로컬 데이터 인벤토리와 용량입니다.
+
+- [PROGRESS_2026-05-23.md](PROGRESS_2026-05-23.md)
+
+  실제 진행 로그입니다.
+
+## 데이터
+
+현재 학습은 HRM cleaned 데이터와 한국어/터미널/툴콜/법률/금융/wiki 데이터를 함께 사용합니다. SFT 후보 데이터도 pretraining에 먼저 넣고, 이후 고품질 subset으로 SFT를 한 번 더 하는 정책입니다.
+
+주요 prepared dataset:
+
+```text
+koterm_hrm_cleaned_fastcap_stage1_v1              14.55B tokens
+koterm_hrm_cleaned_full_nocap_v1                  14.55B tokens
+koterm_hrm_cleaned_full_nocap_extra_epochs_1_3_v1 14.55B tokens per written logical epoch view
+local_terminal_conversations_ctx9k_resp6k_v1       9.39B tokens
+koterm_korean_tool_finance_mix_v1                  3.02B tokens
+sft_bcai_finance_kor_v1                            857.7M tokens
+```
+
+전체 데이터 설명과 비중은 [PRETRAINING_SFT_DATA_MIX_2026-05-23.md](PRETRAINING_SFT_DATA_MIX_2026-05-23.md)를 봅니다.
+
+평가 오염 위험이 있는 데이터는 train에서 제외합니다. 예: `tb2_lite`, Terminal Bench 2, ToolBench eval, chi-bench 평가 split.
+
+## 토크나이저
+
+```text
+local path:  /home/work/.data/huggingface/trained_tokenizers/hrm-ko-terminal-131k-v1
+HF repo:     LLM-OS-Models/HRM-Text-Ko-Terminal-Tokenizer-131K
+method:      byte-level BPE
+vocab:       131,072
+normalize:   NFC
+```
 
 검증된 chars/token:
 
-| 샘플 | chars/token |
-|---|---:|
-| 한국어 일반 | 2.60 |
-| 한국어 법률 | 2.36 |
-| 한국어 터미널 지시 | 2.18 |
-| shell command | 2.68 |
-| tool JSON | 3.32 |
-| Python code | 3.37 |
-| 영어 | 4.40 |
+```text
+Korean general:       2.60
+Korean legal:         2.36
+Korean terminal:      2.18
+shell command:        2.68
+tool JSON:            3.32
+Python code:          3.37
+English:              4.40
+```
 
-## 학습 데이터
+131K vocab 덕분에 한국어/터미널/tool-call 효율은 좋아졌지만, embedding과 LM head가 커져 모델 크기와 VRAM 사용량은 늘었습니다.
 
-현재 실제 pretraining mix v1과 HRM cleaned fast-cap stage-1 V1Dataset까지 생성했습니다.
+## 운영 메모
 
-| 데이터 | 상태 | token |
-|---|---|---:|
-| HRM cleaned base sample | 새 tokenizer로 재패킹 완료 | 250.0M |
-| SWE-ZERO + GLM pilot mix | 전처리 완료 | 251.2M |
-| 한국어 법률/조례/행정규칙/판례 task | 전처리 완료 | 83.1M |
-| 한국어 법령/자치법규 원문 full | 전처리 완료 | 308.9M |
-| ToolBench train tool-call task | 전처리 완료 | 127.0M |
-| `koterm_pretrain_mix_v1` | 병합 완료 | 711.3M |
-| HRM cleaned fast-cap stage-1 | V1Dataset 생성 완료 | 14.55B |
-| 행정규칙+판례 원문 full | 전처리 완료 | 271.7M |
-| 한국어 위키백과 원문 full | 전처리 완료 | 462.5M |
-| HF extra reasoning/agent/mm | 전처리 완료 | 112.6M |
-| local terminal `swe/code/math` | 최적화 JSONL + V1Dataset 완료 | 9.39B |
-| HRM cleaned full/no-cap stage-2 | 새 tokenizer V1Dataset 생성 및 stage2 학습 완료 | 14.55B |
-| HRM cleaned full/no-cap extra stage-2b | V1Dataset 생성 완료, stage1b 이후 이어학습 예약 | 14.55B |
-| 한국어 법률/조례/행정규칙/판례 task full nocap | 전처리 및 HF 업로드 완료 | 629.0M |
-| BCAI Finance Korean | 다운로드, HRM 변환, V1Dataset 전처리, HF 업로드 완료 | 857.7M |
+로컬 git repo에는 원문 데이터와 대형 checkpoint를 커밋하지 않습니다. 재현 가능한 코드와 문서만 남깁니다.
 
-주요 경로:
+큰 산출물 위치:
 
 ```text
-/home/work/.data/hrm_text_prepared/hrm_cleaned_base_sample_v1
-/home/work/.data/hrm_text_prepared/sft_swe_glm_mix_v1
-/home/work/.data/hrm_text_prepared/sft_korean_legal_v1
-/home/work/.data/hrm_text_prepared/korean_legal_raw_full_v1
-/home/work/.data/hrm_text_prepared/sft_toolbench_v1
-/home/work/.data/hrm_text_prepared/koterm_pretrain_mix_v1
-/home/work/.data/hrm_text_prepared/koterm_hrm_cleaned_fastcap_stage1_v1
-/home/work/.data/hrm_text_prepared/korean_admrule_precedent_raw_full_v1
-/home/work/.data/hrm_text_prepared/kowiki_raw_full_v1
-/home/work/.data/hrm_text_prepared/hf_extra_reasoning_agent_mm_v1
-/home/work/.data/hrm_text_prepared/local_terminal_conversations_ctx9k_resp6k_v1
-/home/work/.data/hrm_text_prepared/sft_bcai_finance_kor_v1
+/home/work/.data/hrm_text_prepared
+/home/work/.data/hrm_text_checkpoints
+/home/work/.data/hrm_text_logs
 ```
 
-현재 stage-1의 14.55B tokens는 최종 40B 목표가 아니라 GPU를 먼저 계속 쓰기 위한 fast-cap stage입니다. 기존 HRM cleaned 원본 계열은 새 tokenizer로 다시 처리해 `stage2-hrm-full-nocap`와 `stage2b-hrm-full-nocap-extra-epoch1`로 사용합니다. 실제 이어학습은 stage별 checkpoint의 `epoch_1_info.json`에 기록된 `global_step`을 기준으로 이어갑니다.
+Hugging Face:
 
-prepared dataset 공개용 업로드도 병렬로 진행합니다.
+```text
+model latest export:
+  https://huggingface.co/LLM-OS-Models/KoHRM-Text-1.4B
 
-| 항목 | 값 |
-|---|---|
-| HF prepared dataset repo | `https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-prepared-data` |
-| 현재 업로드 | 완료된 V1Dataset 15개와 tokenizer/docs |
-| 후속 업로드 예약 | HRM cleaned 328G full/no-cap V1Dataset |
+raw checkpoints:
+  https://huggingface.co/LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints
 
-`koterm_pretrain_mix_v1` 구성:
-
-| 항목 | 값 |
-|---|---:|
-| samples | 1,176,723 |
-| tokens | 711,277,327 |
-| avg sample length | 604.5 |
-| max sample length | 4,096 |
-| disk size | 약 2.8G |
-
-## 현재 파일럿 결과
-
-`sft_swe_glm_mix_v1`로 B size end-to-end pilot을 완료했습니다.
-
-| 항목 | 결과 |
-|---|---:|
-| arch | B |
-| params | 435,159,040 |
-| GPUs | 8 x H200 |
-| global batch | 262,144 tokens |
-| wall time | 약 7분 38초 |
-| peak VRAM | 장당 약 38GB |
-| final loss | 3.00653 |
-| final token accuracy | 0.46379 |
-| checkpoint | `/home/work/.data/hrm_text_checkpoints/koterm_b_swe_glm_pilot_v1` |
-| HF repo | `LLM-OS-Models/HRM-Text-Ko-Terminal-B-SWE-GLM-Pilot` |
-
-이 pilot은 학습 코드, FA3, FSDP2, tokenizer, V1Dataset 포맷 검증용입니다. 최종 데이터 mix는 아닙니다.
-
-## 현재 실행 상태
-
-2026-05-27 KST 기준 실제 실행은 `stage2b-hrm-full-nocap-extra-epoch1`입니다. `stage1b-hrm-fastcap-repeat` final checkpoint에서 이어받아 8 x H200으로 실행 중입니다. 자세한 batch/context 설명은 [BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md](BATCH_AND_CONTEXT_LENGTH_NOTES_2026-05-27.md), 운영 기록과 handoff 상태는 [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md)와 [CHAIN_HANDOFF_STATUS_2026-05-26.md](CHAIN_HANDOFF_STATUS_2026-05-26.md)를 봅니다.
-
-현재 운영 요약:
-
-| 항목 | 값 |
-|---|---:|
-| 현재 stage | `stage2b-hrm-full-nocap-extra-epoch1` |
-| resume step | 317,814 |
-| global batch | 180,224 tokens |
-| local token slots/GPU | 22,528 |
-| context length | 4,096 tokens |
-| 실측 속도 | 약 1.02 step/s |
-| 처리량 | 약 0.66B tokens/hour |
-| stage2b 예상 종료 | 2026-05-28 오후 KST 전후 |
-| 확장 chain 예상 종료 | 2026-05-31 전후 |
-| 중간 checkpoint upload | `scripts/watch_chain_step_checkpoints_upload.py`로 190000 step 이후 자동 업로드 |
-
-이어학습 handoff는 보정했습니다. 현재 `scripts/watch_stage2b_then_finish_chain.py` watcher가 stage2b final checkpoint를 기다리고, 이후 `stage3b -> stage4b -> stage1c -> stage2c -> stage3c -> stage4c`를 이어서 실행합니다. 다음 stage는 metadata 추정 step이 아니라 checkpoint의 실제 `epoch_1_info.json` `global_step`으로 이어갑니다.
-
-train loss와 token accuracy는 현재까지 정상입니다. stage3는 local-terminal domain shift 때문에 초반 loss가 높게 시작했지만, 2026-05-26 02:08 KST 기준 first 100 avg loss `1.1249`에서 last 100 avg loss `0.7240`으로 내려갔고, token accuracy도 `0.7167`에서 `0.7895`로 올랐습니다. 자세한 해석은 [TRAINING_LOSS_ANALYSIS_2026-05-26.md](TRAINING_LOSS_ANALYSIS_2026-05-26.md)를 봅니다.
-
-전처리와 학습은 병렬로 진행합니다.
-
-아래 항목은 초기 stage-0/stage-1 운영 기록입니다. 최신 stage-2 이후 운영 상태는 위 표와 [TRAINING_OPERATIONS_LOG_2026-05-26.md](TRAINING_OPERATIONS_LOG_2026-05-26.md)를 기준으로 봅니다.
-
-1. `koterm_pretrain_mix_v1` 711.3M tokens stage-0 학습을 완료했습니다.
-2. stage-0 checkpoint에서 같은 mix를 한 번 더 이어 학습한 stage0b checkpoint를 저장했습니다.
-3. HRM cleaned fast-cap V1Dataset 14.55B tokens를 생성했고, 현재 stage-1 학습을 진행 중입니다.
-4. checkpoint 업로드는 학습 프로세스 안에서 하지 않고 watcher 프로세스로 분리해 epoch 단위로만 HF에 업로드합니다.
-
-현재 stage-1 실행 기준:
-
-```bash
-cd /home/work/.projects/LLM-OS-Models/Terminal/HRM-Text
-
-PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
-WANDB_MODE=offline \
-WANDB_DIR=/home/work/.data/wandb \
-TOKENIZERS_PARALLELISM=false \
-OMP_NUM_THREADS=1 \
-MKL_NUM_THREADS=1 \
-NCCL_DEBUG=WARN \
-TORCH_NCCL_ASYNC_ERROR_HANDLING=1 \
-taskset -c 0-31 torchrun --standalone --nproc_per_node=8 pretrain.py \
-  arch/size@arch=XL \
-  data.path=/home/work/.data/hrm_text_prepared/koterm_hrm_cleaned_fastcap_stage1_v1 \
-  resume_from=/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage0b-debug-launch2 \
-  +checkpoint_path=/home/work/.data/hrm_text_checkpoints/KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs180 \
-  +project_name=KoHRM-Text \
-  +run_name=KoHRM-Text-1.4B-stage1-hrm-fastcap-gbs180 \
-  epochs=1 \
-  global_batch_size=180224 \
-  lr_warmup_steps=2000 \
-  resume_step_offset=7765 \
-  total_steps_override=88522 \
-  checkpoint_step_interval=5000 \
-  checkpoint_interval=1
+prepared data:
+  https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-prepared-data
 ```
 
-`global_batch_size=262144`와 `229376`은 초반에는 동작했지만, 후속 graph/cache 확장에서 추가 VRAM이 필요해 OOM 위험이 컸습니다. 현재 stage-1은 `global_batch_size=180224`로 재시작해 정상 진행 중입니다.
+현재 운영 원칙:
 
-현재 stage-1 관측값:
+```text
+1. GPU를 놀리지 않는다.
+2. OOM 위험이 큰 무리한 batch보다 안정적인 장기 run을 우선한다.
+3. stage final은 checkpoint metadata의 actual global_step으로 이어받는다.
+4. 로컬 checkpoint는 최신 2개 중심으로 유지한다.
+5. 업로드는 watcher로 분리해 학습 프로세스와 충돌을 줄인다.
+```
 
-| 항목 | 값 |
-|---|---:|
-| global batch | 180,224 tokens |
-| local token slots/GPU | 22,528 |
-| VRAM | GPU0 약 129.9GB, 나머지 약 127.6GB |
-| GPU utilization | 8장 모두 99% |
-| 속도 | 약 1.02 step/sec |
-| ETA | 약 15~16시간 내외 |
+## 코드 진입점
 
-2026-05-24 기준 stage-1은 약 36% 지점까지 정상 진행 중입니다. prepared-data HF 초기 업로드와 legal full task 추가 업로드는 완료됐으며, 후속 전처리 예약 스크립트가 HRM full/no-cap 패킹/업로드를 기다리고 있습니다.
+```text
+pretrain.py
+  +-- dataset_new.py
+  +-- multipack_sampler.py
+  +-- models/lm_head.py
+  +-- models/flash_attention_prefixlm_v2.py
+  +-- models/baselines/hrm_nocarry_bp_warmup.py
 
-stage0b checkpoint는 HF `LLM-OS-Models/KoHRM-Text-1.4B`에 `model.safetensors` 안전 포맷으로 변환해 업로드했습니다. HF unsafe scan 경고를 만들던 raw `.distcp`/`.metadata` 파일은 메인 repo에서 삭제했습니다. raw FSDP2 checkpoint는 optimizer/EMA resume 용도이므로 별도 raw checkpoint repo로 분리합니다.
+conversion/convert_to_hf.py
+  +-- FSDP2 checkpoint -> safetensors export
 
-## 로컬 데이터 주의
+scripts/watch_stage2b_then_finish_chain.py
+  +-- stage2b 이후 stage3b/4b/1c/2c/3c/4c 자동 continuation
 
-이 git repo에는 원문 데이터와 체크포인트를 커밋하지 않습니다. 큰 데이터는 `.data` 또는 로컬 디렉터리에 두고, 이 저장소에는 재현 가능한 코드와 문서만 남깁니다.
-
-대표적으로 제외하는 항목:
-
-- `data.zip`
-- `data_toolbench/`
-- `legalize-kr/`
-- `ordinance-kr/`
-- `outputs/`
-- `__pycache__/`
-- `tea_debug.log`
+scripts/watch_chain_step_checkpoints_upload.py
+  +-- step checkpoint raw + converted upload watcher
+```
 
 ## 다음 작업
 
-1. 현재 stage-1 학습을 완료하고 checkpoint를 저장합니다.
-2. 메인 HF repo에는 `safetensors` 변환본을 올리고, raw FSDP2 checkpoint는 별도 raw checkpoint repo에 올립니다.
-3. local terminal dataset `swe/math/code.parquet`의 optimized V1Dataset 9.39B tokens를 stage-2에 추가합니다.
-4. HRM cleaned 328G no-cap 재토큰화를 완료하고 full training용 45B~52B token mix를 확정합니다.
-5. 최종 checkpoint를 선택하면 `conversion/convert_to_hf.py`로 model-only artifact를 따로 변환합니다.
+```text
+1. stage2b를 끊기지 않게 완료한다.
+2. watcher가 stage3b -> stage4b -> stage1c -> stage2c -> stage3c -> stage4c를 이어가게 둔다.
+3. checkpoint 업로드와 model card 갱신을 계속한다.
+4. planned continuation 이후 evaluation과 SFT subset 구성을 진행한다.
+```
