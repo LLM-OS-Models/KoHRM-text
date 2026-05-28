@@ -119,7 +119,7 @@ def build_readme(repo_id: str, checkpoint_root: Path, epoch: int) -> str:
         return model_card.read_text(encoding="utf-8")
 
     return f"""---
-license: other
+license: apache-2.0
 tags:
 - hrm-text
 - korean

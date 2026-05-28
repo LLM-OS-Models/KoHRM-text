@@ -235,7 +235,7 @@ def convert_and_upload(step: int) -> Path:
     banner = "\n".join(
         [
             "---",
-            "license: other",
+            "license: apache-2.0",
             "language:",
             "- ko",
             "- en",

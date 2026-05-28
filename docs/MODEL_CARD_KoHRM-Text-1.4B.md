@@ -1,5 +1,5 @@
 ---
-license: other
+license: apache-2.0
 language:
 - ko
 - en
