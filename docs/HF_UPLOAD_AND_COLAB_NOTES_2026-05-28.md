@@ -30,6 +30,31 @@ For each complete step checkpoint, `scripts/watch_chain_step_checkpoints_upload.
 
 The public model repo is a rolling latest export. Older converted public exports are not preserved there unless uploaded to a separate repo or revision/tag later.
 
+## Epoch 2 Final Pin
+
+The current epoch-2 pass ends after:
+
+```text
+stage4b-korean-tool-finance-repeat
+```
+
+Because the rolling latest model repo will keep changing during epoch 3, the epoch-2 completion point is pinned separately.
+
+Scheduled epoch-2 final outputs:
+
+- Pinned model repo: `LLM-OS-Models/KoHRM-Text-1.4B-Epoch2`
+- Main model repo branch: `LLM-OS-Models/KoHRM-Text-1.4B@epoch-2-final`
+- Main model repo tag: `epoch-2-final-step-<global_step>`
+- Raw checkpoint folder: `epoch2-final-stage4b-korean-tool-finance-repeat-globalstep-<global_step>` under `LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints`
+
+Watcher:
+
+```bash
+python scripts/watch_epoch2_final_upload.py
+```
+
+The watcher waits for the `stage4b-korean-tool-finance-repeat` `epoch_1` checkpoint, waits for the stage4b process to exit, then uploads both raw and converted artifacts with explicit `epoch2-final` names.
+
 ## 2026-05-28 Upload Fix
 
 After moving project documents under `docs/`, the upload code still tried to copy:
