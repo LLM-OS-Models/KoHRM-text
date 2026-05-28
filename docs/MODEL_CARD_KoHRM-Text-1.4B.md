@@ -78,7 +78,7 @@ The public repo currently contains the converted model weights and tokenizer, bu
 What works today:
 
 - Download the latest public weights.
-- Load the tokenizer with `AutoTokenizer`.
+- Load the tokenizer directly with `tokenizers.Tokenizer.from_file("tokenizer.json")`.
 - Inspect `config.json`.
 - Verify `model.safetensors` on CPU or Colab T4.
 
@@ -177,19 +177,18 @@ A ready-to-run Colab notebook is available in the project repo:
 
 https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb
 
-The notebook is optimized for a Colab T4 smoke test: it can download the latest public files, run tokenizer experiments, inspect `model.safetensors` shapes without fully loading all weights into GPU memory, and confirm the current expected Transformers compatibility limitation.
+The notebook is optimized for a Colab T4 smoke test: it can download the latest public files, run tokenizer experiments without importing `transformers`, inspect `model.safetensors` shapes without fully loading all weights into GPU memory, and confirm the current expected Transformers compatibility limitation.
 
 ```python
-!pip -q install -U huggingface_hub transformers safetensors accelerate
+!pip -q install -U huggingface_hub hf_transfer tokenizers safetensors
 ```
 
 ```python
 from pathlib import Path
 import json
-import torch
 from huggingface_hub import snapshot_download
-from transformers import AutoTokenizer
-from safetensors.torch import load_file
+from tokenizers import Tokenizer
+from safetensors import safe_open
 
 repo_id = "LLM-OS-Models/KoHRM-Text-1.4B"
 
@@ -207,31 +206,28 @@ repo_dir = Path(snapshot_download(
 ))
 
 print("Downloaded to:", repo_dir)
-print("Runtime:", "cuda" if torch.cuda.is_available() else "cpu")
-if torch.cuda.is_available():
-    print("GPU:", torch.cuda.get_device_name(0))
-
 config = json.loads((repo_dir / "config.json").read_text())
 print("model_type:", config["model_type"])
 print("hidden_size:", config["hidden_size"])
 print("vocab_size:", config["vocab_size"])
 print("context:", config["max_position_embeddings"])
 
-tokenizer = AutoTokenizer.from_pretrained(repo_dir, use_fast=True)
+tokenizer = Tokenizer.from_file(str(repo_dir / "tokenizer.json"))
 prompt = "<|im_start|><|object_ref_start|>한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 명령을 알려주세요.<|im_end|>"
-ids = tokenizer(prompt, add_special_tokens=False)["input_ids"]
+ids = tokenizer.encode(prompt).ids
 print("prompt tokens:", len(ids))
 print("first token ids:", ids[:20])
 
-# CPU weight integrity check. This loads about 2.8GB of bf16 weights into CPU RAM.
-state = load_file(str(repo_dir / "model.safetensors"), device="cpu")
-num_tensors = len(state)
-num_params = sum(t.numel() for t in state.values())
-first_key = next(iter(state))
+# Fast CPU weight metadata check. This reads tensor shapes without loading every tensor.
+with safe_open(repo_dir / "model.safetensors", framework="pt", device="cpu") as f:
+    keys = list(f.keys())
+    num_params = sum(__import__("math").prod(f.get_slice(k).get_shape()) for k in keys)
+    first_key = keys[0]
+    first_shape = f.get_slice(first_key).get_shape()
 
-print("num_tensors:", num_tensors)
+print("num_tensors:", len(keys))
 print("num_params:", f"{num_params:,}")
-print("first tensor:", first_key, tuple(state[first_key].shape), state[first_key].dtype)
+print("first tensor:", first_key, tuple(first_shape))
 ```
 
 Expected result:
@@ -239,17 +235,10 @@ Expected result:
 - `model_type` should be `hrm_text`.
 - `vocab_size` should be `131072`.
 - `num_params` should be around `1.38B`.
-- Tokenizer loading should work on CPU and Colab T4.
+- Tokenizer loading through `tokenizers.Tokenizer.from_file` should work on CPU and Colab T4.
 - `AutoModelForCausalLM` generation is expected to be unavailable until remote-code support is added.
 
-If you try this:
-
-```python
-from transformers import AutoModelForCausalLM
-AutoModelForCausalLM.from_pretrained("LLM-OS-Models/KoHRM-Text-1.4B")
-```
-
-and it fails with an unknown `hrm_text` architecture, that is expected for the current public export.
+Do not use `AutoTokenizer` or `AutoModelForCausalLM` in this Colab smoke test. The public export is a custom `hrm_text` architecture and does not yet ship the remote-code model wrapper needed for plain Transformers generation.
 
 ### Internal / Project-Side Generation
 
@@ -481,7 +470,7 @@ schedule: H2L3 recurrent computation
 현재 바로 가능한 것:
 
 - 최신 공개 weight 다운로드
-- `AutoTokenizer`로 tokenizer 로드
+- `tokenizers.Tokenizer.from_file("tokenizer.json")`로 tokenizer 로드
 - `config.json` 확인
 - CPU 또는 Colab T4에서 `model.safetensors` 무결성 확인
 
@@ -580,19 +569,18 @@ schedule: H2L3 recurrent computation
 
 https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb
 
-이 노트북은 T4 Colab에서 최신 공개 파일 다운로드, tokenizer 실험, `model.safetensors` shape 검사, 현재 Transformers 호환성 제한 확인을 빠르게 수행하도록 작성되어 있습니다. 전체 weight를 GPU에 올려 생성하는 노트북이 아니라 공개 artifact 스모크 테스트용입니다.
+이 노트북은 T4 Colab에서 최신 공개 파일 다운로드, `transformers`를 import하지 않는 tokenizer 실험, `model.safetensors` shape 검사, 현재 Transformers 호환성 제한 확인을 빠르게 수행하도록 작성되어 있습니다. 전체 weight를 GPU에 올려 생성하는 노트북이 아니라 공개 artifact 스모크 테스트용입니다.
 
 ```python
-!pip -q install -U huggingface_hub transformers safetensors accelerate
+!pip -q install -U huggingface_hub hf_transfer tokenizers safetensors
 ```
 
 ```python
 from pathlib import Path
 import json
-import torch
 from huggingface_hub import snapshot_download
-from transformers import AutoTokenizer
-from safetensors.torch import load_file
+from tokenizers import Tokenizer
+from safetensors import safe_open
 
 repo_id = "LLM-OS-Models/KoHRM-Text-1.4B"
 
@@ -610,31 +598,28 @@ repo_dir = Path(snapshot_download(
 ))
 
 print("Downloaded to:", repo_dir)
-print("Runtime:", "cuda" if torch.cuda.is_available() else "cpu")
-if torch.cuda.is_available():
-    print("GPU:", torch.cuda.get_device_name(0))
-
 config = json.loads((repo_dir / "config.json").read_text())
 print("model_type:", config["model_type"])
 print("hidden_size:", config["hidden_size"])
 print("vocab_size:", config["vocab_size"])
 print("context:", config["max_position_embeddings"])
 
-tokenizer = AutoTokenizer.from_pretrained(repo_dir, use_fast=True)
+tokenizer = Tokenizer.from_file(str(repo_dir / "tokenizer.json"))
 prompt = "<|im_start|><|object_ref_start|>한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 명령을 알려주세요.<|im_end|>"
-ids = tokenizer(prompt, add_special_tokens=False)["input_ids"]
+ids = tokenizer.encode(prompt).ids
 print("prompt tokens:", len(ids))
 print("first token ids:", ids[:20])
 
-# CPU weight integrity check. 약 2.8GB bf16 weight를 CPU RAM에 로드합니다.
-state = load_file(str(repo_dir / "model.safetensors"), device="cpu")
-num_tensors = len(state)
-num_params = sum(t.numel() for t in state.values())
-first_key = next(iter(state))
+# 빠른 CPU weight metadata check. 모든 tensor를 RAM에 올리지 않고 shape만 읽습니다.
+with safe_open(repo_dir / "model.safetensors", framework="pt", device="cpu") as f:
+    keys = list(f.keys())
+    num_params = sum(__import__("math").prod(f.get_slice(k).get_shape()) for k in keys)
+    first_key = keys[0]
+    first_shape = f.get_slice(first_key).get_shape()
 
-print("num_tensors:", num_tensors)
+print("num_tensors:", len(keys))
 print("num_params:", f"{num_params:,}")
-print("first tensor:", first_key, tuple(state[first_key].shape), state[first_key].dtype)
+print("first tensor:", first_key, tuple(first_shape))
 ```
 
 정상 결과:
@@ -642,17 +627,10 @@ print("first tensor:", first_key, tuple(state[first_key].shape), state[first_key
 - `model_type`은 `hrm_text`입니다.
 - `vocab_size`는 `131072`입니다.
 - `num_params`는 약 `1.38B`입니다.
-- tokenizer는 CPU와 Colab T4에서 정상 로드됩니다.
+- tokenizer는 `tokenizers.Tokenizer.from_file` 경로로 CPU와 Colab T4에서 정상 로드됩니다.
 - `AutoModelForCausalLM` generation은 remote-code wrapper가 추가되기 전까지는 안 되는 것이 정상입니다.
 
-다음 코드는 현재 public repo 기준으로 실패할 수 있습니다.
-
-```python
-from transformers import AutoModelForCausalLM
-AutoModelForCausalLM.from_pretrained("LLM-OS-Models/KoHRM-Text-1.4B")
-```
-
-`hrm_text` architecture를 모른다는 오류가 나오면 현재 상태에서는 정상입니다.
+이 Colab smoke test에서는 `AutoTokenizer`나 `AutoModelForCausalLM`를 쓰지 마십시오. 현재 public export는 custom `hrm_text` architecture이고, plain Transformers generation에 필요한 remote-code model wrapper는 아직 포함되어 있지 않습니다.
 
 ### 내부 / 프로젝트 코드 기반 생성
 

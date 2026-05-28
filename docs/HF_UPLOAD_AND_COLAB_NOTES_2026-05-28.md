@@ -96,7 +96,7 @@ HrmTextForCausalLM
 
 Therefore:
 
-- `AutoTokenizer.from_pretrained("LLM-OS-Models/KoHRM-Text-1.4B")` works.
+- `tokenizers.Tokenizer.from_file("tokenizer.json")` works and is the recommended Colab smoke-test tokenizer path.
 - `config.json` and `model.safetensors` inspection works.
 - Plain `AutoModelForCausalLM.from_pretrained(...)` is expected to fail today.
 - Actual generation still requires project-side HRM-Text code and compatible raw checkpoints until a remote-code wrapper is released.
@@ -111,7 +111,7 @@ Purpose:
 
 - Check the latest Hugging Face revision from Colab.
 - Download tokenizer/config and optionally `model.safetensors`.
-- Validate Korean/terminal/tool-call tokenizer behavior.
+- Validate Korean/terminal/tool-call tokenizer behavior without importing `transformers`.
 - Inspect safetensors tensor shapes without loading the full model into GPU memory.
 - Confirm that plain Transformers generation is not yet supported and fails for the expected custom-architecture reason.
 
