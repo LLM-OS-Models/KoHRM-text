@@ -44,7 +44,7 @@
 
 - [HF_UPLOAD_AND_COLAB_NOTES_2026-05-28.md](HF_UPLOAD_AND_COLAB_NOTES_2026-05-28.md)
 
-  Hugging Face 업로드 정책, 업로드 경로 수정, Colab T4 스모크 테스트 노트북을 정리합니다.
+  Hugging Face 업로드 정책, 업로드 경로 수정, Colab T4 생성 노트북을 정리합니다.
 
 - [EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)
 

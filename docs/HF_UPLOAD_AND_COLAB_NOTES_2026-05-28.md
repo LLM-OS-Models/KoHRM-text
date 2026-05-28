@@ -96,10 +96,11 @@ HrmTextForCausalLM
 
 Therefore:
 
-- `tokenizers.Tokenizer.from_file("tokenizer.json")` works and is the recommended Colab smoke-test tokenizer path.
+- `tokenizers.Tokenizer.from_file("tokenizer.json")` works and is the recommended tokenizer path.
 - `config.json` and `model.safetensors` inspection works.
 - Plain `AutoModelForCausalLM.from_pretrained(...)` is expected to fail today.
-- Actual generation still requires project-side HRM-Text code and compatible raw checkpoints until a remote-code wrapper is released.
+- Public `model.safetensors` generation is available through the project-side lightweight helper `notebooks/kohrm_colab_generate.py`.
+- Internal raw-checkpoint generation still uses `simple_inference_engine.py` and compatible raw checkpoints.
 
 ## Colab T4 Notebook
 
@@ -110,16 +111,18 @@ Notebook:
 Purpose:
 
 - Check the latest Hugging Face revision from Colab.
-- Download tokenizer/config and optionally `model.safetensors`.
+- Download tokenizer/config, `model.safetensors`, and `kohrm_colab_generate.py`.
 - Validate Korean/terminal/tool-call tokenizer behavior without importing `transformers`.
-- Inspect safetensors tensor shapes without loading the full model into GPU memory.
-- Confirm that plain Transformers generation is not yet supported and fails for the expected custom-architecture reason.
+- Inspect safetensors tensor shapes before full load.
+- Run a short generation call with the PyTorch SDPA helper.
+- Confirm that plain Transformers generation is not the supported path yet.
 
 T4 design choice:
 
-- The notebook avoids full model load/generation.
-- Safetensors inspection uses file-header slices to avoid unnecessarily loading all 1.38B parameters into RAM/GPU memory.
-- Weight download can be disabled with `DOWNLOAD_WEIGHTS = False` for a very quick tokenizer/config smoke test.
+- The notebook avoids `transformers`, `AutoTokenizer`, and `AutoModelForCausalLM`.
+- The helper loads the public 1.38B `model.safetensors` export and casts to fp16 on CUDA.
+- Default generation settings are intentionally small: `max_seq_len=512`, `max_new_tokens=64`.
+- CPU generation is possible for plumbing checks but is expected to be very slow.
 
 ## Manual Verification Commands
 

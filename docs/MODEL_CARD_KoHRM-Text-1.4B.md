@@ -11,7 +11,8 @@ tags:
 - code
 - pretraining
 - prefix-lm
-library_name: transformers
+library_name: pytorch
+pipeline_tag: text-generation
 ---
 
 # KoHRM-Text-1.4B
@@ -167,17 +168,19 @@ Prompt format used by the project-side inference code:
 <|im_start|><|object_ref_start|>YOUR_PROMPT_HERE<|im_end|>
 ```
 
-### CPU / Colab T4 Quick Test
-
-Use this to test the **latest public weight files** on CPU or a Colab T4 runtime. This verifies that the tokenizer, config, and `model.safetensors` are downloadable and readable.
-
-It does not run text generation yet, because the public repo does not yet ship the custom HRM-Text modeling wrapper.
+### Colab T4 Quick Generation
 
 A ready-to-run Colab notebook is available in the project repo:
 
 https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb
 
-The notebook is optimized for a Colab T4 smoke test: it can download the latest public files, run tokenizer experiments without importing `transformers`, inspect `model.safetensors` shapes without fully loading all weights into GPU memory, and confirm the current expected Transformers compatibility limitation.
+The notebook downloads the latest public files and runs a short generation test on a Colab T4.
+
+It intentionally avoids `transformers`, `AutoTokenizer`, and `AutoModelForCausalLM`. Instead, it uses:
+
+- `tokenizers.Tokenizer.from_file("tokenizer.json")`
+- `safetensors.torch.load_file("model.safetensors")`
+- `kohrm_colab_generate.py`, a small PyTorch SDPA runtime for the HRM-Text architecture
 
 ```python
 !pip -q install -U huggingface_hub hf_transfer tokenizers safetensors
@@ -186,9 +189,10 @@ The notebook is optimized for a Colab T4 smoke test: it can download the latest 
 ```python
 from pathlib import Path
 import json
+import importlib.util
+import sys
 from huggingface_hub import snapshot_download
 from tokenizers import Tokenizer
-from safetensors import safe_open
 
 repo_id = "LLM-OS-Models/KoHRM-Text-1.4B"
 
@@ -202,6 +206,7 @@ repo_dir = Path(snapshot_download(
         "tokenizer_config.json",
         "special_tokens_map.json",
         "model.safetensors",
+        "kohrm_colab_generate.py",
     ],
 ))
 
@@ -213,124 +218,55 @@ print("vocab_size:", config["vocab_size"])
 print("context:", config["max_position_embeddings"])
 
 tokenizer = Tokenizer.from_file(str(repo_dir / "tokenizer.json"))
-prompt = "<|im_start|><|object_ref_start|>한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 명령을 알려주세요.<|im_end|>"
-ids = tokenizer.encode(prompt).ids
+wrapped = "<|im_start|><|object_ref_start|>한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 명령을 알려주세요.<|im_end|>"
+ids = tokenizer.encode(wrapped).ids
 print("prompt tokens:", len(ids))
 print("first token ids:", ids[:20])
 
-# Fast CPU weight metadata check. This reads tensor shapes without loading every tensor.
-with safe_open(repo_dir / "model.safetensors", framework="pt", device="cpu") as f:
-    keys = list(f.keys())
-    num_params = sum(__import__("math").prod(f.get_slice(k).get_shape()) for k in keys)
-    first_key = keys[0]
-    first_shape = f.get_slice(first_key).get_shape()
+spec = importlib.util.spec_from_file_location(
+    "kohrm_colab_generate",
+    repo_dir / "kohrm_colab_generate.py",
+)
+kohrm = importlib.util.module_from_spec(spec)
+sys.modules["kohrm_colab_generate"] = kohrm
+spec.loader.exec_module(kohrm)
 
-print("num_tensors:", len(keys))
-print("num_params:", f"{num_params:,}")
-print("first tensor:", first_key, tuple(first_shape))
+output = kohrm.generate_text(
+    repo_dir,
+    "한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 bash 명령을 알려주세요. 명령만 간단히 답하세요.",
+    max_new_tokens=64,
+    max_seq_len=512,
+    temperature=0.0,
+)
+print(output)
 ```
 
 Expected result:
 
 - `model_type` should be `hrm_text`.
 - `vocab_size` should be `131072`.
-- `num_params` should be around `1.38B`.
-- Tokenizer loading through `tokenizers.Tokenizer.from_file` should work on CPU and Colab T4.
-- `AutoModelForCausalLM` generation is expected to be unavailable until remote-code support is added.
+- The helper should load the 1.38B public `model.safetensors` export.
+- On Colab T4, generation runs in fp16 through PyTorch scaled-dot-product attention.
+- First generation can take a few minutes because it downloads and loads the full weight file.
 
-Do not use `AutoTokenizer` or `AutoModelForCausalLM` in this Colab smoke test. The public export is a custom `hrm_text` architecture and does not yet ship the remote-code model wrapper needed for plain Transformers generation.
-
-### Internal / Project-Side Generation
-
-For actual generation today, use the project code and raw FSDP2 checkpoints. This is the currently supported copy-paste path for CUDA machines. A BF16-capable GPU with enough VRAM is recommended; Colab T4 is useful for the smoke test above, not for this raw-checkpoint generation path.
-
-```bash
-git clone https://github.com/LLM-OS-Models/KoHRM-text
-cd KoHRM-text
-python -m venv .venv
-source .venv/bin/activate
-pip install -U pip wheel
-pip install -r requirements.txt
-pip install -U "huggingface_hub[cli]"
-export TOKENIZERS_PARALLELISM=false
-export NUMEXPR_MAX_THREADS=128
-```
-
-Download the latest uploaded raw checkpoint example. This example uses `stage1b-hrm-fastcap-repeat-step310000`, which is available in the raw checkpoint repo. When a newer raw checkpoint is uploaded, change both the include path and `ckpt_step`.
-
-```bash
-mkdir -p checkpoints/kohm-raw
-huggingface-cli download LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints \
-  --include "stage1b-hrm-fastcap-repeat-step310000/**" \
-  --local-dir checkpoints/kohm-raw
-```
-
-Create and run a minimal generation script:
-
-```bash
-cat > run_kohrm_raw_generate.py <<'PY'
-import os
-
-os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
-os.environ.setdefault("NUMEXPR_MAX_THREADS", "128")
-
-from simple_inference_engine import inference_load_checkpoint, inference_generate
-
-ckpt_dir = "checkpoints/kohm-raw/stage1b-hrm-fastcap-repeat-step310000"
-
-prompts = [
-    (
-        0,
-        (
-            "direct",
-            "한국어 존댓말로 현재 디렉터리에서 용량이 가장 큰 파일 10개를 찾는 bash 명령을 제안해 주세요.",
-        ),
-    ),
-    (
-        1,
-        (
-            "direct",
-            "Write a Python function that validates a JSON tool-call object with name and arguments.",
-        ),
-    ),
-]
-
-ckpt = inference_load_checkpoint(
-    ckpt_path=ckpt_dir,
-    ckpt_epoch=None,
-    ckpt_step=310000,
-    ckpt_use_ema=True,
-    device="cuda",
-)
-
-for pid, text in inference_generate(
-    ckpt,
-    iter(prompts),
-    max_tokens=1024,
-    max_generation=256,
-    batch_size=1,
-    temp=0.0,
-):
-    print(f"\n### sample {pid}\n{text}")
-PY
-
-python run_kohrm_raw_generate.py
-```
-
-Prompt format is handled by `InferenceCheckpoint.tokenize_prompt`. The first tuple item is the condition string, usually `"direct"`, and the second item is the user prompt. Internally this becomes:
+Prompt format used by the helper:
 
 ```text
 <|im_start|><|object_ref_start|>PROMPT<|im_end|>
 ```
 
-If you want to test a newer raw checkpoint:
+Plain `AutoModelForCausalLM.generate()` is still not the supported path. This model is a custom `hrm_text` architecture, so ordinary Transformers generation requires a future `trust_remote_code` wrapper. Use the notebook/helper above for public `model.safetensors` generation today.
 
-1. Check the raw checkpoint repo for the newest uploaded stage/step.
-2. Change the `huggingface-cli download --include` pattern.
-3. Change `ckpt_dir`.
-4. Change `ckpt_step`.
+### Internal Raw-Checkpoint Generation
 
-Plain `AutoModelForCausalLM` generation from `model.safetensors` will be added later when the public `trust_remote_code` wrapper is available.
+For training-machine debugging and exact raw FSDP2 checkpoint recovery, the project still includes the upstream-style inference path:
+
+- `simple_inference_engine.py`
+- raw checkpoints from `LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints`
+- CUDA/FlashAttention-oriented execution
+
+That path is mainly for internal continuation/evaluation, not the easiest Colab test.
+
 
 ### Training Data
 
@@ -559,17 +495,19 @@ schedule: H2L3 recurrent computation
 <|im_start|><|object_ref_start|>여기에_프롬프트를_넣습니다<|im_end|>
 ```
 
-### CPU / Colab T4 빠른 테스트
-
-아래 코드는 CPU 환경이나 Colab T4 런타임에서 최신 공개 weight 파일을 확인하는 용도입니다. tokenizer, config, `model.safetensors`가 정상적으로 받아지고 읽히는지 검증합니다.
-
-아직 public repo에 custom HRM-Text modeling wrapper가 없기 때문에 이 코드는 text generation을 실행하지 않습니다.
+### Colab T4 빠른 생성
 
 바로 실행할 수 있는 Colab 노트북은 project repo에 있습니다.
 
 https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb
 
-이 노트북은 T4 Colab에서 최신 공개 파일 다운로드, `transformers`를 import하지 않는 tokenizer 실험, `model.safetensors` shape 검사, 현재 Transformers 호환성 제한 확인을 빠르게 수행하도록 작성되어 있습니다. 전체 weight를 GPU에 올려 생성하는 노트북이 아니라 공개 artifact 스모크 테스트용입니다.
+이 노트북은 Colab T4에서 최신 공개 파일을 다운로드하고 짧은 생성을 직접 실행합니다.
+
+일부 Colab 환경에서 `transformers`가 `torchvision::nms` import 오류를 내거나 custom architecture를 못 찾는 문제가 생길 수 있으므로, 이 노트북은 `AutoTokenizer`와 `AutoModelForCausalLM`을 쓰지 않습니다. 대신 아래 경로를 사용합니다.
+
+- `tokenizers.Tokenizer.from_file("tokenizer.json")`
+- `safetensors.torch.load_file("model.safetensors")`
+- HRM-Text 구조를 직접 구현한 `kohrm_colab_generate.py`
 
 ```python
 !pip -q install -U huggingface_hub hf_transfer tokenizers safetensors
@@ -578,9 +516,10 @@ https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_
 ```python
 from pathlib import Path
 import json
+import importlib.util
+import sys
 from huggingface_hub import snapshot_download
 from tokenizers import Tokenizer
-from safetensors import safe_open
 
 repo_id = "LLM-OS-Models/KoHRM-Text-1.4B"
 
@@ -594,6 +533,7 @@ repo_dir = Path(snapshot_download(
         "tokenizer_config.json",
         "special_tokens_map.json",
         "model.safetensors",
+        "kohrm_colab_generate.py",
     ],
 ))
 
@@ -605,124 +545,54 @@ print("vocab_size:", config["vocab_size"])
 print("context:", config["max_position_embeddings"])
 
 tokenizer = Tokenizer.from_file(str(repo_dir / "tokenizer.json"))
-prompt = "<|im_start|><|object_ref_start|>한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 명령을 알려주세요.<|im_end|>"
-ids = tokenizer.encode(prompt).ids
+wrapped = "<|im_start|><|object_ref_start|>한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 명령을 알려주세요.<|im_end|>"
+ids = tokenizer.encode(wrapped).ids
 print("prompt tokens:", len(ids))
 print("first token ids:", ids[:20])
 
-# 빠른 CPU weight metadata check. 모든 tensor를 RAM에 올리지 않고 shape만 읽습니다.
-with safe_open(repo_dir / "model.safetensors", framework="pt", device="cpu") as f:
-    keys = list(f.keys())
-    num_params = sum(__import__("math").prod(f.get_slice(k).get_shape()) for k in keys)
-    first_key = keys[0]
-    first_shape = f.get_slice(first_key).get_shape()
+spec = importlib.util.spec_from_file_location(
+    "kohrm_colab_generate",
+    repo_dir / "kohrm_colab_generate.py",
+)
+kohrm = importlib.util.module_from_spec(spec)
+sys.modules["kohrm_colab_generate"] = kohrm
+spec.loader.exec_module(kohrm)
 
-print("num_tensors:", len(keys))
-print("num_params:", f"{num_params:,}")
-print("first tensor:", first_key, tuple(first_shape))
+output = kohrm.generate_text(
+    repo_dir,
+    "한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 bash 명령을 알려주세요. 명령만 간단히 답하세요.",
+    max_new_tokens=64,
+    max_seq_len=512,
+    temperature=0.0,
+)
+print(output)
 ```
 
 정상 결과:
 
 - `model_type`은 `hrm_text`입니다.
 - `vocab_size`는 `131072`입니다.
-- `num_params`는 약 `1.38B`입니다.
-- tokenizer는 `tokenizers.Tokenizer.from_file` 경로로 CPU와 Colab T4에서 정상 로드됩니다.
-- `AutoModelForCausalLM` generation은 remote-code wrapper가 추가되기 전까지는 안 되는 것이 정상입니다.
+- helper가 1.38B 공개 `model.safetensors` 변환본을 로드합니다.
+- Colab T4에서는 fp16 PyTorch scaled-dot-product attention으로 생성합니다.
+- 첫 실행은 2.8 GiB급 weight 다운로드와 로드 때문에 몇 분 걸릴 수 있습니다.
 
-이 Colab smoke test에서는 `AutoTokenizer`나 `AutoModelForCausalLM`를 쓰지 마십시오. 현재 public export는 custom `hrm_text` architecture이고, plain Transformers generation에 필요한 remote-code model wrapper는 아직 포함되어 있지 않습니다.
-
-### 내부 / 프로젝트 코드 기반 생성
-
-현재 실제 generation을 하려면 프로젝트 코드와 raw FSDP2 checkpoint를 사용합니다. 이것이 지금 바로 쓸 수 있는 CUDA 환경용 경로입니다. BF16이 되는 충분한 VRAM의 GPU를 권장합니다. Colab T4는 위 smoke test에는 쓸 수 있지만, raw checkpoint generation 권장 경로는 아닙니다.
-
-```bash
-git clone https://github.com/LLM-OS-Models/KoHRM-text
-cd KoHRM-text
-python -m venv .venv
-source .venv/bin/activate
-pip install -U pip wheel
-pip install -r requirements.txt
-pip install -U "huggingface_hub[cli]"
-export TOKENIZERS_PARALLELISM=false
-export NUMEXPR_MAX_THREADS=128
-```
-
-현재 바로 받을 수 있는 raw checkpoint 예시입니다. 아래 예시는 raw checkpoint repo에 올라온 `stage1b-hrm-fastcap-repeat-step310000`을 사용합니다. 더 최신 raw checkpoint가 올라오면 include path와 `ckpt_step`을 같이 바꾸면 됩니다.
-
-```bash
-mkdir -p checkpoints/kohm-raw
-huggingface-cli download LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints \
-  --include "stage1b-hrm-fastcap-repeat-step310000/**" \
-  --local-dir checkpoints/kohm-raw
-```
-
-최소 generation script:
-
-```bash
-cat > run_kohrm_raw_generate.py <<'PY'
-import os
-
-os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
-os.environ.setdefault("NUMEXPR_MAX_THREADS", "128")
-
-from simple_inference_engine import inference_load_checkpoint, inference_generate
-
-ckpt_dir = "checkpoints/kohm-raw/stage1b-hrm-fastcap-repeat-step310000"
-
-prompts = [
-    (
-        0,
-        (
-            "direct",
-            "한국어 존댓말로 현재 디렉터리에서 용량이 가장 큰 파일 10개를 찾는 bash 명령을 제안해 주세요.",
-        ),
-    ),
-    (
-        1,
-        (
-            "direct",
-            "Write a Python function that validates a JSON tool-call object with name and arguments.",
-        ),
-    ),
-]
-
-ckpt = inference_load_checkpoint(
-    ckpt_path=ckpt_dir,
-    ckpt_epoch=None,
-    ckpt_step=310000,
-    ckpt_use_ema=True,
-    device="cuda",
-)
-
-for pid, text in inference_generate(
-    ckpt,
-    iter(prompts),
-    max_tokens=1024,
-    max_generation=256,
-    batch_size=1,
-    temp=0.0,
-):
-    print(f"\n### sample {pid}\n{text}")
-PY
-
-python run_kohrm_raw_generate.py
-```
-
-Prompt formatting은 `InferenceCheckpoint.tokenize_prompt`가 처리합니다. tuple의 첫 번째 값은 condition string이고 보통 `"direct"`를 씁니다. 두 번째 값은 사용자 prompt입니다. 내부적으로는 다음 형식이 됩니다.
+helper가 쓰는 prompt 형식:
 
 ```text
 <|im_start|><|object_ref_start|>PROMPT<|im_end|>
 ```
 
-더 최신 raw checkpoint를 테스트하려면:
+일반 `AutoModelForCausalLM.generate()`는 아직 지원 경로가 아닙니다. 이 모델은 custom `hrm_text` architecture이므로, 일반 Transformers generation은 추후 `trust_remote_code` wrapper가 추가된 뒤 지원하는 것이 맞습니다. 지금 공개 `model.safetensors`로 바로 생성하려면 위 노트북/helper를 쓰면 됩니다.
 
-1. raw checkpoint repo에서 가장 최신 stage/step을 확인합니다.
-2. `huggingface-cli download --include` pattern을 바꿉니다.
-3. `ckpt_dir`를 바꿉니다.
-4. `ckpt_step`을 바꿉니다.
+### 내부 raw-checkpoint 생성
 
-공개 `model.safetensors`에서 바로 `AutoModelForCausalLM` generation을 하는 경로는 public `trust_remote_code` wrapper를 추가한 뒤 지원할 예정입니다.
+학습 머신에서 디버깅하거나 raw FSDP2 checkpoint를 정확히 복구해서 평가할 때는 upstream 스타일 inference 경로도 유지합니다.
+
+- `simple_inference_engine.py`
+- `LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints`의 raw checkpoints
+- CUDA/FlashAttention 중심 실행
+
+이 경로는 내부 continuation/evaluation용에 가깝고, Colab에서 가장 쉽게 확인하려면 위 공개 `model.safetensors` helper를 쓰는 것이 낫습니다.
 
 ### 학습 데이터
 

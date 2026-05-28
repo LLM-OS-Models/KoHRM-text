@@ -174,11 +174,11 @@ pass 3: data 1/2/3/4 예약
 
 - [docs/HF_UPLOAD_AND_COLAB_NOTES_2026-05-28.md](docs/HF_UPLOAD_AND_COLAB_NOTES_2026-05-28.md)
 
-  Hugging Face 업로드 정책, 업로드 경로 수정, Colab T4 스모크 테스트 노트북을 정리했습니다.
+  Hugging Face 업로드 정책, 업로드 경로 수정, Colab T4 생성 노트북을 정리했습니다.
 
 - [notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb](notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb)
 
-  Colab T4에서 최신 공개 artifact를 빠르게 점검하는 노트북입니다.
+  Colab T4에서 최신 공개 weight를 받아 짧은 생성을 실행하는 노트북입니다.
 
 - [docs/EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](docs/EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)
 
