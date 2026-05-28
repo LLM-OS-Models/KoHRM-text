@@ -42,6 +42,10 @@
 
   upstream/논문 기준 SFT, vLLM, CPU 실행 지원 여부를 정리합니다.
 
+- [HF_UPLOAD_AND_COLAB_NOTES_2026-05-28.md](HF_UPLOAD_AND_COLAB_NOTES_2026-05-28.md)
+
+  Hugging Face 업로드 정책, 업로드 경로 수정, Colab T4 스모크 테스트 노트북을 정리합니다.
+
 - [EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)
 
   데이터 1/2/3/4 pass 기준으로 stage와 checkpoint를 찾는 문서입니다.

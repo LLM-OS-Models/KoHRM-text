@@ -22,7 +22,7 @@ CKPT_ROOT = Path("/home/work/.data/hrm_text_checkpoints")
 LOG_ROOT = Path("/home/work/.data/hrm_text_logs")
 STAGE_ROOT = Path("/home/work/.data/hrm_text_hf_upload_stage")
 TOKENIZER_PATH = Path("/home/work/.data/huggingface/trained_tokenizers/hrm-ko-terminal-131k-v1")
-MODEL_CARD = HRM_ROOT / "MODEL_CARD_KoHRM-Text-1.4B.md"
+MODEL_CARD = HRM_ROOT / "docs" / "MODEL_CARD_KoHRM-Text-1.4B.md"
 RAW_REPO = "LLM-OS-Models/KoHRM-Text-1.4B-raw-checkpoints"
 MODEL_REPO = "LLM-OS-Models/KoHRM-Text-1.4B"
 

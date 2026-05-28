@@ -173,6 +173,12 @@ Use this to test the **latest public weight files** on CPU or a Colab T4 runtime
 
 It does not run text generation yet, because the public repo does not yet ship the custom HRM-Text modeling wrapper.
 
+A ready-to-run Colab notebook is available in the project repo:
+
+https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb
+
+The notebook is optimized for a Colab T4 smoke test: it can download the latest public files, run tokenizer experiments, inspect `model.safetensors` shapes without fully loading all weights into GPU memory, and confirm the current expected Transformers compatibility limitation.
+
 ```python
 !pip -q install -U huggingface_hub transformers safetensors accelerate
 ```
@@ -569,6 +575,12 @@ schedule: H2L3 recurrent computation
 아래 코드는 CPU 환경이나 Colab T4 런타임에서 최신 공개 weight 파일을 확인하는 용도입니다. tokenizer, config, `model.safetensors`가 정상적으로 받아지고 읽히는지 검증합니다.
 
 아직 public repo에 custom HRM-Text modeling wrapper가 없기 때문에 이 코드는 text generation을 실행하지 않습니다.
+
+바로 실행할 수 있는 Colab 노트북은 project repo에 있습니다.
+
+https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb
+
+이 노트북은 T4 Colab에서 최신 공개 파일 다운로드, tokenizer 실험, `model.safetensors` shape 검사, 현재 Transformers 호환성 제한 확인을 빠르게 수행하도록 작성되어 있습니다. 전체 weight를 GPU에 올려 생성하는 노트북이 아니라 공개 artifact 스모크 테스트용입니다.
 
 ```python
 !pip -q install -U huggingface_hub transformers safetensors accelerate

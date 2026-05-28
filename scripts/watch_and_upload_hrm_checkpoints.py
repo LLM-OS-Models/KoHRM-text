@@ -114,7 +114,7 @@ def latest_tokenizer_dir(checkpoint_root: Path) -> Path | None:
 
 
 def build_readme(repo_id: str, checkpoint_root: Path, epoch: int) -> str:
-    model_card = Path(__file__).resolve().parents[1] / "MODEL_CARD_KoHRM-Text-1.4B.md"
+    model_card = Path(__file__).resolve().parents[1] / "docs" / "MODEL_CARD_KoHRM-Text-1.4B.md"
     if model_card.exists():
         return model_card.read_text(encoding="utf-8")
 

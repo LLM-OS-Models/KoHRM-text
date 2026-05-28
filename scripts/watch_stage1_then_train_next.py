@@ -304,7 +304,7 @@ def start_converted_model_upload(checkpoint_path: Path, stage_name: str) -> None
     """
     out_dir = UPLOAD_STAGE_ROOT / f"KoHRM-Text-1.4B-converted-{stage_name}"
     log_path = LOG_ROOT / f"upload_{stage_name}_converted_model.log"
-    model_card = HRM_ROOT / "MODEL_CARD_KoHRM-Text-1.4B.md"
+    model_card = HRM_ROOT / "docs" / "MODEL_CARD_KoHRM-Text-1.4B.md"
     cmd = (
         f"rm -rf {out_dir} && "
         "python conversion/convert_to_hf.py "
