@@ -225,8 +225,18 @@ def load_kohrm(repo_dir: str | Path, device: str | None = None, max_gpu_memory_g
     return model, tokenizer, cfg
 
 
-def _sample_next(logits: torch.Tensor, temperature: float, top_p: float) -> int:
+def _apply_repetition_penalty(logits: torch.Tensor, seen_ids: list[int], penalty: float) -> torch.Tensor:
+    if penalty <= 1.0 or not seen_ids:
+        return logits
+    for token_id in set(seen_ids):
+        value = logits[..., token_id]
+        logits[..., token_id] = torch.where(value < 0, value * penalty, value / penalty)
+    return logits
+
+
+def _sample_next(logits: torch.Tensor, temperature: float, top_p: float, seen_ids: list[int] | None = None, repetition_penalty: float = 1.0) -> int:
     logits = logits.float()
+    logits = _apply_repetition_penalty(logits, seen_ids or [], repetition_penalty)
     if temperature <= 0:
         return int(torch.argmax(logits, dim=-1).item())
     probs = torch.softmax(logits / temperature, dim=-1)
@@ -250,6 +260,7 @@ def generate_text(
     max_seq_len: int = 512,
     temperature: float = 0.0,
     top_p: float = 0.9,
+    repetition_penalty: float = 1.08,
     condition_token: str = "<|object_ref_start|>",
     device: str | None = None,
 ) -> str:
@@ -257,7 +268,7 @@ def generate_text(
     dev = next(model.parameters()).device
     dtype = next(model.parameters()).dtype
     wrapped = f"<|im_start|>{condition_token}{prompt}<|im_end|>"
-    input_ids = tokenizer.encode(wrapped).ids
+    input_ids = tokenizer.encode(wrapped, add_special_tokens=False).ids
     if len(input_ids) + max_new_tokens + 1 > max_seq_len:
         raise ValueError(f"Prompt plus generation exceeds max_seq_len={max_seq_len}: prompt_tokens={len(input_ids)}")
 
@@ -268,19 +279,27 @@ def generate_text(
     cache_pos = ids.shape[1]
 
     eos_id = int(cfg.get("eos_token_id") or tokenizer.token_to_id("<|box_end|>"))
+    stop_ids = {
+        eos_id,
+        tokenizer.token_to_id("<|im_end|>"),
+        tokenizer.token_to_id("<|box_end|>"),
+    }
+    stop_ids = {int(x) for x in stop_ids if x is not None}
     out_ids: list[int] = []
-    next_id = _sample_next(logits, temperature, top_p)
+    seen_ids = list(input_ids)
+    next_id = _sample_next(logits, temperature, top_p, seen_ids, repetition_penalty)
     for _ in range(max_new_tokens):
-        if next_id == eos_id:
+        if next_id in stop_ids:
             break
         out_ids.append(next_id)
+        seen_ids.append(next_id)
         token = torch.tensor([[next_id]], device=dev, dtype=torch.long)
         pos = torch.tensor([[cache_pos]], device=dev, dtype=torch.long)
         logits = model(token, pos, caches=caches, cache_pos=cache_pos)[:, -1, :]
         cache_pos += 1
-        next_id = _sample_next(logits, temperature, top_p)
+        next_id = _sample_next(logits, temperature, top_p, seen_ids, repetition_penalty)
 
-    return tokenizer.decode(out_ids)
+    return tokenizer.decode(out_ids, skip_special_tokens=True).strip()
 
 
 def main() -> None:
@@ -291,6 +310,7 @@ def main() -> None:
     parser.add_argument("--max-seq-len", type=int, default=512)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--top-p", type=float, default=0.9)
+    parser.add_argument("--repetition-penalty", type=float, default=1.08)
     parser.add_argument("--device", default=None)
     args = parser.parse_args()
     print(generate_text(
@@ -300,6 +320,7 @@ def main() -> None:
         max_seq_len=args.max_seq_len,
         temperature=args.temperature,
         top_p=args.top_p,
+        repetition_penalty=args.repetition_penalty,
         device=args.device,
     ))
 
