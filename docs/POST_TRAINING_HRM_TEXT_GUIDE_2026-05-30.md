@@ -75,8 +75,12 @@ instruction / prefix             response
 따라서 추론 코드도 prompt wrapper를 정확히 써야 합니다.
 
 ```python
-wrapped = f"<|im_start|><|object_ref_start|>{prompt}<|im_end|>"
+condition = "direct"
+condition_token = "<|object_ref_start|>"
+wrapped = f"<|im_start|>{condition_token}{prompt}<|im_end|>"
 ```
+
+이는 upstream `simple_inference_engine.py`의 `InferenceCheckpoint.tokenize_prompt(condition, prompt)`와 같은 구조입니다. upstream은 `tokenizer_info["condition_mapping"]`에서 `direct`, `cot`, `noisy`, `synth`를 condition token으로 바꾸고, `<boq><condition_tokens><prompt><eoq>`를 tokenization합니다.
 
 이 구조에서 한국어 법률/위키/금융 지식형 prompt는 한국어로 테스트하는 것이 맞고, 터미널/코딩/툴콜은 현재 학습 mix상 영어 prompt가 더 안정적일 가능성이 큽니다. 한국어로 터미널 명령을 요구하면 모델이 영어 추론문이나 설명으로 흔들릴 수 있으므로, post-training 전 smoke test에서는 영어 명령형 prompt를 먼저 기준으로 둡니다.
 
@@ -272,11 +276,29 @@ upstream README에 있는 것:
 ```text
 Korean legal/wiki/finance -> Korean prompts
 Terminal/coding/tool-call -> English prompts
-condition -> direct
+condition -> direct / <|object_ref_start|>
 first decode -> deterministic
 second decode -> optional low-temperature retry
 validation -> JSON parse / one-line command / code shape
 ```
+
+또한 probe를 두 그룹으로 나눕니다.
+
+```text
+pretraining-distribution probes
+  목적: 현재 checkpoint가 해당 도메인/형식의 신호를 배우고 있는지 확인
+  예: 짧은 한국어 금융 설명, 법률 조문 핵심 내용, 영어 terminal concept continuation
+
+strict post-training probes
+  목적: 나중에 SFT/LoRA/RL 후 반드시 맞춰야 하는 행동을 측정
+  예: JSON 객체만 출력, bash command 한 줄만 출력, Python 함수만 출력
+```
+
+따라서 현재 SFT 전 checkpoint가 strict probe에서 깨지는 것은 이상 현상이 아닙니다. 특히 사용자가 보여준 `ganjang`, `<br>A`, 잘못된 JSON schema, command 대신 설명문 출력은 prompt 하나로 해결할 문제가 아니라, 아직 behavior post-training이 끝나지 않았다는 신호로 봐야 합니다.
+
+프롬프트도 학습 데이터와 맞춰 단순하게 둡니다. 과도한 meta instruction을 덧붙이면 SFT 전 모델에서는 오히려 instruction token 자체를 출력하거나, 설명문/영어 reasoning 형태로 새기 쉬우므로 smoke test에는 복잡한 prompt engineering을 넣지 않습니다.
+
+논문 Appendix D의 inference-time auto-guidance는 recurrent loop 중간 logits를 final logits와 보간/외삽하는 방식입니다. 이는 future experiment로 의미가 있지만, 현재 Colab helper는 공개 `model.safetensors`를 가장 단순하고 재현 가능하게 확인하는 경로이므로 standard full-depth logits만 씁니다. auto-guidance는 benchmark를 고치는 대체제가 아니라, checkpoint와 post-training이 안정된 뒤 추가로 실험할 runtime option입니다.
 
 ## 운영 우선순위
 

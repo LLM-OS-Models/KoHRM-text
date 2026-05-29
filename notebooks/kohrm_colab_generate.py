@@ -21,6 +21,14 @@ from safetensors.torch import load_file
 from tokenizers import Tokenizer
 
 
+DEFAULT_CONDITION_TOKENS = {
+    "direct": "<|object_ref_start|>",
+    "cot": "<|object_ref_end|>",
+    "noisy": "<|quad_start|>",
+    "synth": "<|quad_end|>",
+}
+
+
 def _rms_norm(x: torch.Tensor, eps: float) -> torch.Tensor:
     return F.rms_norm(x, (x.shape[-1],), eps=eps)
 
@@ -225,7 +233,39 @@ def load_kohrm(repo_dir: str | Path, device: str | None = None, max_gpu_memory_g
     return model, tokenizer, cfg
 
 
-def format_kohrm_prompt(prompt: str, condition_token: str = "<|object_ref_start|>") -> str:
+def condition_to_tokens(condition: str = "direct", mapping: dict[str, str] | None = None) -> str:
+    """Map upstream HRM-Text condition names to tokenizer control tokens."""
+    mapping = mapping or DEFAULT_CONDITION_TOKENS
+    pieces: list[str] = []
+    for raw_name in condition.split(","):
+        name = raw_name.strip()
+        if not name:
+            continue
+        if name not in mapping:
+            valid = ", ".join(sorted(mapping))
+            raise ValueError(f"Unknown condition {name!r}; expected one of: {valid}")
+        pieces.append(mapping[name])
+    if not pieces:
+        pieces.append(mapping["direct"])
+    return "".join(pieces)
+
+
+def format_kohrm_prompt(
+    prompt: str,
+    condition: str = "direct",
+    condition_token: str | None = None,
+) -> str:
+    """Format prompts like upstream InferenceCheckpoint.tokenize_prompt().
+
+    Upstream wraps prompts as:
+    `<boq><condition_tokens><instruction><eoq>`.
+
+    For answer-only generation use condition="direct", which maps to
+    `<|object_ref_start|>` in the KoHRM tokenizer. `condition_token` is kept
+    for backward compatibility and overrides `condition` when supplied.
+    """
+    if condition_token is None:
+        condition_token = condition_to_tokens(condition)
     return f"<|im_start|>{condition_token}{prompt}<|im_end|>"
 
 
@@ -290,11 +330,12 @@ def generate_from_loaded(
     top_p: float = 0.9,
     repetition_penalty: float = 1.18,
     no_repeat_ngram_size: int = 4,
-    condition_token: str = "<|object_ref_start|>",
+    condition: str = "direct",
+    condition_token: str | None = None,
 ) -> str:
     dev = next(model.parameters()).device
     dtype = next(model.parameters()).dtype
-    wrapped = format_kohrm_prompt(prompt, condition_token=condition_token)
+    wrapped = format_kohrm_prompt(prompt, condition=condition, condition_token=condition_token)
     input_ids = tokenizer.encode(wrapped, add_special_tokens=False).ids
     if len(input_ids) + max_new_tokens + 1 > max_seq_len:
         raise ValueError(f"Prompt plus generation exceeds max_seq_len={max_seq_len}: prompt_tokens={len(input_ids)}")
@@ -340,7 +381,8 @@ def generate_text(
     top_p: float = 0.9,
     repetition_penalty: float = 1.18,
     no_repeat_ngram_size: int = 4,
-    condition_token: str = "<|object_ref_start|>",
+    condition: str = "direct",
+    condition_token: str | None = None,
     device: str | None = None,
 ) -> str:
     model, tokenizer, cfg = load_kohrm(repo_dir, device=device, max_gpu_memory_gib=14.0)
@@ -355,6 +397,7 @@ def generate_text(
         top_p=top_p,
         repetition_penalty=repetition_penalty,
         no_repeat_ngram_size=no_repeat_ngram_size,
+        condition=condition,
         condition_token=condition_token,
     )
 
@@ -376,9 +419,14 @@ def main() -> None:
     parser.add_argument("--repetition-penalty", type=float, default=1.18)
     parser.add_argument("--no-repeat-ngram-size", type=int, default=4)
     parser.add_argument(
+        "--condition",
+        default="direct",
+        help="Comma-separated HRM-Text condition names: direct, cot, noisy, synth. Use direct for answer-only outputs.",
+    )
+    parser.add_argument(
         "--condition-token",
-        default="<|object_ref_start|>",
-        help="Use direct=<|object_ref_start|> for answer-only outputs unless testing another condition.",
+        default=None,
+        help="Optional raw condition token override. Normally use --condition direct instead.",
     )
     parser.add_argument("--device", default=None)
     args = parser.parse_args()
@@ -391,6 +439,7 @@ def main() -> None:
         top_p=args.top_p,
         repetition_penalty=args.repetition_penalty,
         no_repeat_ngram_size=args.no_repeat_ngram_size,
+        condition=args.condition,
         condition_token=args.condition_token,
         device=args.device,
     ))

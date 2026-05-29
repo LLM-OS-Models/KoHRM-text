@@ -176,6 +176,8 @@ https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_
 
 The notebook downloads the latest public files and runs training-aligned probes on a Colab T4. Korean law/wiki/finance probes use Korean prompts. Terminal, tool-call, and coding probes use English prompts because that is closer to the current training mix for those behaviors.
 
+This notebook is a pretraining-checkpoint probe, not a final chat/SFT benchmark. Strict JSON-only, command-only, and code-only failures before SFT/LoRA/RL should be interpreted as post-training readiness signals, not as final model quality.
+
 It intentionally avoids `transformers`, `AutoTokenizer`, and `AutoModelForCausalLM`. Instead, it uses:
 
 - `tokenizers.Tokenizer.from_file("tokenizer.json")`
@@ -234,7 +236,7 @@ settings = dict(
     top_p=1.0,
     repetition_penalty=1.20,
     no_repeat_ngram_size=4,
-    condition_token="<|object_ref_start|>",
+    condition="direct",
 )
 
 prompts = {
@@ -257,7 +259,7 @@ Expected result:
 - First generation can take a few minutes because it downloads and loads the full weight file.
 - This is a rolling pretraining checkpoint. If JSON-only, command-only, or Korean repetition behavior is weak, compare later checkpoints with the same notebook before drawing final conclusions.
 
-Prompt format used by the helper:
+Prompt format used by the helper, matching upstream `InferenceCheckpoint.tokenize_prompt()`:
 
 ```text
 <|im_start|><|object_ref_start|>PROMPT<|im_end|>
@@ -511,6 +513,8 @@ https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_
 
 이 노트북은 Colab T4에서 최신 공개 파일을 다운로드하고 학습 포맷에 맞춘 probe를 실행합니다. 한국어 법률/wiki/금융은 한국어 prompt로, 터미널/툴콜/코딩은 현재 학습 mix에 더 가까운 영어 prompt로 확인합니다.
 
+이 노트북은 pretraining checkpoint 확인용이지, 최종 chat/SFT benchmark가 아닙니다. SFT/LoRA/RL 전 단계에서 JSON-only, command-only, code-only가 실패하면 이것은 최종 품질 판정이 아니라 post-training에서 고쳐야 할 readiness signal로 봐야 합니다.
+
 일부 Colab 환경에서 `transformers`가 `torchvision::nms` import 오류를 내거나 custom architecture를 못 찾는 문제가 생길 수 있으므로, 이 노트북은 `AutoTokenizer`와 `AutoModelForCausalLM`을 쓰지 않습니다. 대신 아래 경로를 사용합니다.
 
 - `tokenizers.Tokenizer.from_file("tokenizer.json")`
@@ -569,7 +573,7 @@ settings = dict(
     top_p=1.0,
     repetition_penalty=1.20,
     no_repeat_ngram_size=4,
-    condition_token="<|object_ref_start|>",
+    condition="direct",
 )
 
 prompts = {
@@ -592,7 +596,7 @@ for name, prompt in prompts.items():
 - 첫 실행은 2.8 GiB급 weight 다운로드와 로드 때문에 몇 분 걸릴 수 있습니다.
 - 현재 repo는 rolling pretraining checkpoint입니다. JSON-only, command-only, 한국어 반복 억제가 약하게 보이면 같은 노트북으로 이후 checkpoint와 비교해야 합니다.
 
-helper가 쓰는 prompt 형식:
+helper가 쓰는 prompt 형식은 upstream `InferenceCheckpoint.tokenize_prompt()`와 맞춥니다.
 
 ```text
 <|im_start|><|object_ref_start|>PROMPT<|im_end|>

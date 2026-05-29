@@ -183,7 +183,7 @@ pass 3: data 1/2/3/4 예약
 
 - [notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb](notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb)
 
-  Colab T4에서 최신 공개 weight를 받아 학습 포맷에 맞춘 한국어 법률/위키/금융, 영어 터미널/코딩/툴콜 probe를 실행하는 노트북입니다.
+  Colab T4에서 최신 공개 weight를 받아 학습 포맷에 맞춘 pretraining checkpoint probe를 실행하는 노트북입니다. 한국어 법률/위키/금융은 한국어 prompt로, 영어 터미널/코딩/툴콜은 영어 prompt로 확인하며, strict JSON/command/code 실패는 SFT 전 최종 품질 판정이 아니라 post-training readiness signal로 해석합니다.
 
 - [notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb](notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb)
 

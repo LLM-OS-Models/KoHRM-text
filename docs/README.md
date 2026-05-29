@@ -52,7 +52,7 @@
 
 - [../notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb](../notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb)
 
-  Colab T4에서 공개 weight를 받아 학습 포맷에 맞춘 한국어/영어 domain probe를 실행합니다.
+  Colab T4에서 공개 weight를 받아 학습 포맷에 맞춘 pretraining checkpoint probe를 실행합니다. strict JSON/command/code 결과는 최종 SFT 성능이 아니라 post-training 준비 상태로 해석합니다.
 
 - [../notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb](../notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb)
 
