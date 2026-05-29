@@ -34,6 +34,10 @@
 
   SFT/LoRA/RL 후보 데이터, 전처리 산출물, 사용 순서를 정리합니다.
 
+- [POST_TRAINING_HRM_TEXT_GUIDE_2026-05-30.md](POST_TRAINING_HRM_TEXT_GUIDE_2026-05-30.md)
+
+  HRM-Text/KoHRM 구조에서 SFT, LoRA, RL을 적용할 때 지켜야 할 포맷, 추론 전제, 주의사항입니다.
+
 - [LORA_TRAINING_GUIDE_2026-05-28.md](LORA_TRAINING_GUIDE_2026-05-28.md)
 
   후보별 KoHRM LoRA 학습 실행법과 산출물 구조를 정리합니다.
@@ -48,7 +52,7 @@
 
 - [../notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb](../notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb)
 
-  Colab T4에서 공개 weight를 받아 generation smoke test를 실행합니다.
+  Colab T4에서 공개 weight를 받아 학습 포맷에 맞춘 한국어/영어 domain probe를 실행합니다.
 
 - [../notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb](../notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb)
 

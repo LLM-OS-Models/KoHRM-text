@@ -165,6 +165,10 @@ pass 3: data 1/2/3/4 예약
 
   SFT/LoRA/RL 후보 데이터, 전처리 산출물, 사용 순서를 정리했습니다.
 
+- [docs/POST_TRAINING_HRM_TEXT_GUIDE_2026-05-30.md](docs/POST_TRAINING_HRM_TEXT_GUIDE_2026-05-30.md)
+
+  HRM-Text/KoHRM 구조에서 SFT, LoRA, RL을 적용할 때 지켜야 할 포맷, 추론 전제, 주의사항입니다.
+
 - [docs/LORA_TRAINING_GUIDE_2026-05-28.md](docs/LORA_TRAINING_GUIDE_2026-05-28.md)
 
   후보별 KoHRM LoRA 학습 실행법과 산출물 구조를 정리했습니다.
@@ -179,7 +183,7 @@ pass 3: data 1/2/3/4 예약
 
 - [notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb](notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb)
 
-  Colab T4에서 최신 공개 weight를 받아 짧은 생성을 실행하는 노트북입니다.
+  Colab T4에서 최신 공개 weight를 받아 학습 포맷에 맞춘 한국어 법률/위키/금융, 영어 터미널/코딩/툴콜 probe를 실행하는 노트북입니다.
 
 - [notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb](notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb)
 

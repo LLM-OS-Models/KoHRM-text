@@ -174,7 +174,7 @@ A ready-to-run Colab notebook is available in the project repo:
 
 https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb
 
-The notebook downloads the latest public files and runs a short generation test on a Colab T4.
+The notebook downloads the latest public files and runs training-aligned probes on a Colab T4. Korean law/wiki/finance probes use Korean prompts. Terminal, tool-call, and coding probes use English prompts because that is closer to the current training mix for those behaviors.
 
 It intentionally avoids `transformers`, `AutoTokenizer`, and `AutoModelForCausalLM`. Instead, it uses:
 
@@ -183,7 +183,8 @@ It intentionally avoids `transformers`, `AutoTokenizer`, and `AutoModelForCausal
 - `kohrm_colab_generate.py`, a small PyTorch SDPA runtime for the HRM-Text architecture
 
 ```python
-!pip -q install -U huggingface_hub hf_transfer tokenizers safetensors
+!pip -q install -U huggingface_hub hf_transfer safetensors
+!pip -q install --force-reinstall -q "tokenizers>=0.22.0,<0.23.1"
 ```
 
 ```python
@@ -217,12 +218,6 @@ print("hidden_size:", config["hidden_size"])
 print("vocab_size:", config["vocab_size"])
 print("context:", config["max_position_embeddings"])
 
-tokenizer = Tokenizer.from_file(str(repo_dir / "tokenizer.json"))
-wrapped = "<|im_start|><|object_ref_start|>한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 명령을 알려주세요.<|im_end|>"
-ids = tokenizer.encode(wrapped).ids
-print("prompt tokens:", len(ids))
-print("first token ids:", ids[:20])
-
 spec = importlib.util.spec_from_file_location(
     "kohrm_colab_generate",
     repo_dir / "kohrm_colab_generate.py",
@@ -231,14 +226,26 @@ kohrm = importlib.util.module_from_spec(spec)
 sys.modules["kohrm_colab_generate"] = kohrm
 spec.loader.exec_module(kohrm)
 
-output = kohrm.generate_text(
-    repo_dir,
-    "한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 bash 명령을 알려주세요. 명령만 간단히 답하세요.",
-    max_new_tokens=64,
+model, tokenizer, cfg = kohrm.load_kohrm(repo_dir, max_gpu_memory_gib=14.0)
+
+settings = dict(
     max_seq_len=512,
     temperature=0.0,
+    top_p=1.0,
+    repetition_penalty=1.20,
+    no_repeat_ngram_size=4,
+    condition_token="<|object_ref_start|>",
 )
-print(output)
+
+prompts = {
+    "ko_finance": "환율 변동이 개인 투자에 미치는 영향과 대비 전략을 한국어로 4문장 이내로 설명하세요. 같은 표현을 반복하지 마세요.",
+    "en_terminal": "Return one bash command only. No explanation. Task: find the 10 largest files under the current directory, excluding .git, sorted by size descending.",
+}
+
+for name, prompt in prompts.items():
+    print("=" * 80)
+    print(name)
+    print(kohrm.generate_from_loaded(model, tokenizer, cfg, prompt, max_new_tokens=96, **settings))
 ```
 
 Expected result:
@@ -248,6 +255,7 @@ Expected result:
 - The helper should load the 1.38B public `model.safetensors` export.
 - On Colab T4, generation runs in fp16 through PyTorch scaled-dot-product attention.
 - First generation can take a few minutes because it downloads and loads the full weight file.
+- This is a rolling pretraining checkpoint. If JSON-only, command-only, or Korean repetition behavior is weak, compare later checkpoints with the same notebook before drawing final conclusions.
 
 Prompt format used by the helper:
 
@@ -501,7 +509,7 @@ schedule: H2L3 recurrent computation
 
 https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb
 
-이 노트북은 Colab T4에서 최신 공개 파일을 다운로드하고 짧은 생성을 직접 실행합니다.
+이 노트북은 Colab T4에서 최신 공개 파일을 다운로드하고 학습 포맷에 맞춘 probe를 실행합니다. 한국어 법률/wiki/금융은 한국어 prompt로, 터미널/툴콜/코딩은 현재 학습 mix에 더 가까운 영어 prompt로 확인합니다.
 
 일부 Colab 환경에서 `transformers`가 `torchvision::nms` import 오류를 내거나 custom architecture를 못 찾는 문제가 생길 수 있으므로, 이 노트북은 `AutoTokenizer`와 `AutoModelForCausalLM`을 쓰지 않습니다. 대신 아래 경로를 사용합니다.
 
@@ -510,7 +518,8 @@ https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_
 - HRM-Text 구조를 직접 구현한 `kohrm_colab_generate.py`
 
 ```python
-!pip -q install -U huggingface_hub hf_transfer tokenizers safetensors
+!pip -q install -U huggingface_hub hf_transfer safetensors
+!pip -q install --force-reinstall -q "tokenizers>=0.22.0,<0.23.1"
 ```
 
 ```python
@@ -544,12 +553,6 @@ print("hidden_size:", config["hidden_size"])
 print("vocab_size:", config["vocab_size"])
 print("context:", config["max_position_embeddings"])
 
-tokenizer = Tokenizer.from_file(str(repo_dir / "tokenizer.json"))
-wrapped = "<|im_start|><|object_ref_start|>한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 명령을 알려주세요.<|im_end|>"
-ids = tokenizer.encode(wrapped).ids
-print("prompt tokens:", len(ids))
-print("first token ids:", ids[:20])
-
 spec = importlib.util.spec_from_file_location(
     "kohrm_colab_generate",
     repo_dir / "kohrm_colab_generate.py",
@@ -558,14 +561,26 @@ kohrm = importlib.util.module_from_spec(spec)
 sys.modules["kohrm_colab_generate"] = kohrm
 spec.loader.exec_module(kohrm)
 
-output = kohrm.generate_text(
-    repo_dir,
-    "한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 bash 명령을 알려주세요. 명령만 간단히 답하세요.",
-    max_new_tokens=64,
+model, tokenizer, cfg = kohrm.load_kohrm(repo_dir, max_gpu_memory_gib=14.0)
+
+settings = dict(
     max_seq_len=512,
     temperature=0.0,
+    top_p=1.0,
+    repetition_penalty=1.20,
+    no_repeat_ngram_size=4,
+    condition_token="<|object_ref_start|>",
 )
-print(output)
+
+prompts = {
+    "ko_finance": "환율 변동이 개인 투자에 미치는 영향과 대비 전략을 한국어로 4문장 이내로 설명하세요. 같은 표현을 반복하지 마세요.",
+    "en_terminal": "Return one bash command only. No explanation. Task: find the 10 largest files under the current directory, excluding .git, sorted by size descending.",
+}
+
+for name, prompt in prompts.items():
+    print("=" * 80)
+    print(name)
+    print(kohrm.generate_from_loaded(model, tokenizer, cfg, prompt, max_new_tokens=96, **settings))
 ```
 
 정상 결과:
@@ -575,6 +590,7 @@ print(output)
 - helper가 1.38B 공개 `model.safetensors` 변환본을 로드합니다.
 - Colab T4에서는 fp16 PyTorch scaled-dot-product attention으로 생성합니다.
 - 첫 실행은 2.8 GiB급 weight 다운로드와 로드 때문에 몇 분 걸릴 수 있습니다.
+- 현재 repo는 rolling pretraining checkpoint입니다. JSON-only, command-only, 한국어 반복 억제가 약하게 보이면 같은 노트북으로 이후 checkpoint와 비교해야 합니다.
 
 helper가 쓰는 prompt 형식:
 

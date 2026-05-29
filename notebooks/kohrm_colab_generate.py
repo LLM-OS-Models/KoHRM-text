@@ -362,13 +362,24 @@ def generate_text(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a small KoHRM-Text generation test without transformers.")
     parser.add_argument("repo_dir", type=Path, help="Directory containing config.json, tokenizer.json, and model.safetensors")
-    parser.add_argument("--prompt", default="한국어로 현재 디렉터리에서 가장 큰 파일 10개를 찾는 bash 명령을 알려주세요.")
+    parser.add_argument(
+        "--prompt",
+        default=(
+            "Return one bash command only. Task: find the 10 largest files under "
+            "the current directory, excluding .git, sorted by size descending."
+        ),
+    )
     parser.add_argument("--max-new-tokens", type=int, default=64)
     parser.add_argument("--max-seq-len", type=int, default=512)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--top-p", type=float, default=0.9)
     parser.add_argument("--repetition-penalty", type=float, default=1.18)
     parser.add_argument("--no-repeat-ngram-size", type=int, default=4)
+    parser.add_argument(
+        "--condition-token",
+        default="<|object_ref_start|>",
+        help="Use direct=<|object_ref_start|> for answer-only outputs unless testing another condition.",
+    )
     parser.add_argument("--device", default=None)
     args = parser.parse_args()
     print(generate_text(
@@ -380,6 +391,7 @@ def main() -> None:
         top_p=args.top_p,
         repetition_penalty=args.repetition_penalty,
         no_repeat_ngram_size=args.no_repeat_ngram_size,
+        condition_token=args.condition_token,
         device=args.device,
     ))
 

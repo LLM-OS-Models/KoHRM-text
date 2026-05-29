@@ -34,6 +34,10 @@ STAGES = [
     ("stage2b-hrm-full-nocap-extra-epoch1", CKPT_ROOT / "KoHRM-Text-1.4B-stage2b-hrm-full-nocap-extra-epoch1-gbs180"),
     ("stage3b-local-terminal-repeat", CKPT_ROOT / "KoHRM-Text-1.4B-stage3b-local-terminal-repeat-gbs180"),
     ("stage4b-korean-tool-finance-repeat", CKPT_ROOT / "KoHRM-Text-1.4B-stage4b-korean-tool-finance-repeat-gbs180"),
+    ("stage1c-hrm-fastcap-repeat2", CKPT_ROOT / "KoHRM-Text-1.4B-stage1c-hrm-fastcap-repeat2-gbs180"),
+    ("stage2c-hrm-full-nocap-repeat2", CKPT_ROOT / "KoHRM-Text-1.4B-stage2c-hrm-full-nocap-repeat2-gbs180"),
+    ("stage3c-local-terminal-repeat2", CKPT_ROOT / "KoHRM-Text-1.4B-stage3c-local-terminal-repeat2-gbs180"),
+    ("stage4c-korean-tool-finance-repeat2", CKPT_ROOT / "KoHRM-Text-1.4B-stage4c-korean-tool-finance-repeat2-gbs180"),
 ]
 
 
