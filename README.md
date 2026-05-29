@@ -28,6 +28,7 @@ context:     4,096 tokens
 tokenizer:   131,072 vocab byte-level BPE
 HF model:    LLM-OS-Models/KoHRM-Text-1.4B
 HF data:     LLM-OS-Models/KoHRM-Text-1.4B-prepared-data
+HF SFT data: LLM-OS-Models/KoHRM-Text-1.4B-sft-lora-data
 GitHub:      https://github.com/LLM-OS-Models/KoHRM-text.git
 ```
 
@@ -180,6 +181,10 @@ pass 3: data 1/2/3/4 예약
 
   Colab T4에서 최신 공개 weight를 받아 짧은 생성을 실행하는 노트북입니다.
 
+- [notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb](notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb)
+
+  SFT/LoRA prepared dataset repo 확인, subset 선택, H200 실행 명령을 정리한 노트북입니다.
+
 - [docs/EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](docs/EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)
 
   데이터 1/2/3/4 pass 기준으로 stage와 checkpoint를 찾는 문서입니다.
@@ -211,6 +216,10 @@ pass 3: data 1/2/3/4 예약
 - [docs/HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md](docs/HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md)
 
   Hugging Face prepared dataset card 초안입니다.
+
+- [docs/HF_DATASET_CARD_KoHRM-Text-SFT-LoRA-Data.md](docs/HF_DATASET_CARD_KoHRM-Text-SFT-LoRA-Data.md)
+
+  SFT/LoRA prepared subset dataset card 초안입니다.
 
 - [docs/AVAILABLE_DATA.md](docs/AVAILABLE_DATA.md)
 
@@ -253,6 +262,19 @@ kohrm_sft_behavior_core_v1        285.0M tokens
 권장 순서는 `behavior_mini`로 LoRA/짧은 SFT smoke를 먼저 보고, terminal/tool 형식이 부족하면 `terminal_tool_core`, 한국어 도메인 응답이 부족하면 `korean_domain_core`, 전체 행동 보정이 필요하면 `behavior_core`로 확장하는 방식입니다.
 
 자세한 기준은 [docs/SFT_RL_CANDIDATE_PREP_2026-05-28.md](docs/SFT_RL_CANDIDATE_PREP_2026-05-28.md)를 봅니다.
+
+SFT/LoRA용 prepared subset은 별도 Hugging Face dataset repo에 올립니다.
+
+```text
+https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-sft-lora-data
+```
+
+실행 wrapper:
+
+```bash
+export RESUME_FROM=/path/to/KoHRM/full/checkpoint
+bash scripts/run_kohrm_lora_experiments.sh phase1
+```
 
 ## 토크나이저
 
@@ -301,6 +323,9 @@ raw checkpoints:
 
 prepared data:
   https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-prepared-data
+
+SFT/LoRA prepared data:
+  https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-sft-lora-data
 ```
 
 현재 운영 원칙:

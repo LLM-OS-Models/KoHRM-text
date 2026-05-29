@@ -214,6 +214,25 @@ def save_lora_training_checkpoint(config: LoraTrainConfig, train_state: LoraTrai
         step=train_state.step,
         tag=tag,
     )
+    prune_step_lora_checkpoints(config.checkpoint_path, config.checkpoint_keep_last)
+
+
+def prune_step_lora_checkpoints(checkpoint_path: str, keep_last: Optional[int]) -> None:
+    if keep_last is None or keep_last <= 0:
+        return
+    out = Path(checkpoint_path)
+    step_items: list[tuple[int, Path, Path]] = []
+    for pt_path in out.glob("lora_step_*.pt"):
+        try:
+            step = int(pt_path.stem.rsplit("_", 1)[-1])
+        except ValueError:
+            continue
+        info_path = out / f"{pt_path.stem}_info.json"
+        step_items.append((step, pt_path, info_path))
+    step_items.sort(key=lambda item: item[0])
+    for _step, pt_path, info_path in step_items[:-keep_last]:
+        pt_path.unlink(missing_ok=True)
+        info_path.unlink(missing_ok=True)
 
 
 def load_synced_config(hydra_config: DictConfig, rank: int) -> LoraTrainConfig:

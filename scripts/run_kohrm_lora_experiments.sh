@@ -10,7 +10,10 @@ NPROC="${NPROC:-8}"
 GBS="${GBS:-32768}"
 RANK="${LORA_RANK:-16}"
 ALPHA="${LORA_ALPHA:-32.0}"
-LR="${LR:-1.0e-4}"
+LORA_DROPOUT="${LORA_DROPOUT:-0.0}"
+LR="${LR:-8.0e-5}"
+SAVE_STEPS="${SAVE_STEPS:-1000}"
+KEEP_LAST="${KEEP_LAST:-2}"
 
 run_lora() {
   local name="$1"
@@ -35,8 +38,11 @@ run_lora() {
     "global_batch_size=$GBS" \
     "epochs=$epochs" \
     "lr=$LR" \
+    "checkpoint_step_interval=$SAVE_STEPS" \
+    "checkpoint_keep_last=$KEEP_LAST" \
     "lora.rank=$RANK" \
-    "lora.alpha=$ALPHA"
+    "lora.alpha=$ALPHA" \
+    "lora.dropout=$LORA_DROPOUT"
 }
 
 case "${1:-all}" in
@@ -54,12 +60,17 @@ case "${1:-all}" in
     ;;
   all)
     "${BASH_SOURCE[0]}" behavior-mini
-    "${BASH_SOURCE[0]}" terminal-tool
     "${BASH_SOURCE[0]}" korean-domain
+    "${BASH_SOURCE[0]}" terminal-tool
     "${BASH_SOURCE[0]}" behavior-core
     ;;
+  phase1)
+    "${BASH_SOURCE[0]}" behavior-mini
+    "${BASH_SOURCE[0]}" korean-domain
+    "${BASH_SOURCE[0]}" terminal-tool
+    ;;
   *)
-    echo "usage: $0 {behavior-mini|terminal-tool|korean-domain|behavior-core|all}" >&2
+    echo "usage: $0 {behavior-mini|terminal-tool|korean-domain|behavior-core|phase1|all}" >&2
     exit 2
     ;;
 esac

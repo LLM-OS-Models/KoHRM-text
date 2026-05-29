@@ -45,10 +45,28 @@ RL reward를 줘도 탐색 공간이 나쁘고 보상이 불안정해진다.
 pretraining final eval
 -> behavior_mini_v1 LoRA 또는 짧은 SFT 1 epoch
 -> terminal/tool/Korean quick eval
+-> 한국어 반복/도메인 응답 문제가 크면 korean_domain_core_v1 LoRA 추가
+-> terminal/tool 형식 문제가 크면 terminal_tool_core_v1 LoRA 추가
 -> 형식 문제가 줄면 RL 중심
--> 형식 문제가 계속 크면 terminal_tool_core_v1 SFT/LoRA 추가
 -> 최종적으로 reward 기반 RL
 ```
+
+2026-05-29 공개 checkpoint Colab smoke에서 확인한 현상:
+
+```text
+legal_json:
+  JSON 구조는 일부 맞추지만 필드명과 요지에서 환각이 있음.
+
+finance_qa:
+  동일 표현 반복이 나타남.
+
+terminal_command:
+  명령만 요구해도 영어 agent reasoning으로 새는 경우가 있음.
+```
+
+이 결과만으로 사전학습이 실패했다고 보기는 어렵습니다. 현재 checkpoint는 아직 pretraining 중간본이고,
+assistant-style final answer alignment가 덜 된 상태입니다. 다만 SFT/LoRA가 필요하다는 신호는 분명합니다.
+우선순위는 한국어 짧은 응답 안정화, repetition 억제, terminal command-only 형식, JSON fidelity입니다.
 
 ## 후보가 적절한 이유
 
@@ -360,7 +378,8 @@ terminal/tool/code 전반이 크게 흔들린다.
 
 ```text
 LoRA smoke on behavior_mini_v1
--> terminal/tool eval
+-> Korean/terminal/tool eval
+-> 필요하면 LoRA on korean_domain_core_v1
 -> 필요하면 LoRA on terminal_tool_core_v1
 -> 그래도 부족하면 short full SFT on behavior_core_v1
 -> 마지막에 RL
@@ -402,6 +421,24 @@ behavior_core_v1:
   full SFT는 평가 후 결정
 ```
 
+현재 wrapper 기본값:
+
+```text
+global_batch_size:          32768 token slots
+lr:                         8.0e-5
+checkpoint_step_interval:   1000
+checkpoint_keep_last:       2
+lora.rank:                  16
+lora.alpha:                 32.0
+lora.dropout:               0.0
+```
+
+별도 HF dataset repo:
+
+```text
+https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-sft-lora-data
+```
+
 ## 생성 명령 요약
 
 component subset:
@@ -441,4 +478,6 @@ python scripts/merge_prepared_sft_data.py \
 V1Dataset 무결성 검사 완료.
 학습은 아직 시작하지 않음.
 현재 장기 pretraining run을 방해하지 않도록 SFT/RL 실행은 별도 판단 후 시작.
+HF SFT/LoRA dataset repo 업로드 완료:
+  https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-sft-lora-data
 ```

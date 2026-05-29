@@ -46,6 +46,14 @@
 
   Hugging Face 업로드 정책, 업로드 경로 수정, Colab T4 생성 노트북을 정리합니다.
 
+- [../notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb](../notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb)
+
+  Colab T4에서 공개 weight를 받아 generation smoke test를 실행합니다.
+
+- [../notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb](../notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb)
+
+  SFT/LoRA prepared dataset repo 확인과 subset별 실행 명령을 정리합니다.
+
 - [EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)
 
   데이터 1/2/3/4 pass 기준으로 stage와 checkpoint를 찾는 문서입니다.
@@ -81,6 +89,10 @@
 - [HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md](HF_DATASET_CARD_KoHRM-Text-Prepared-Data.md)
 
   Hugging Face prepared dataset card 초안입니다.
+
+- [HF_DATASET_CARD_KoHRM-Text-SFT-LoRA-Data.md](HF_DATASET_CARD_KoHRM-Text-SFT-LoRA-Data.md)
+
+  SFT/LoRA prepared subset dataset card 초안입니다.
 
 - [AVAILABLE_DATA.md](AVAILABLE_DATA.md)
 

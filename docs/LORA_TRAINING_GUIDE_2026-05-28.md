@@ -10,10 +10,27 @@ LoRA는 full SFT 전에 빠르게 여러 행동 보정 버전을 비교하기 �
 
 ```text
 behavior-mini     -> 가장 먼저 돌릴 smoke / quick behavior check
-terminal-tool     -> 터미널, tool-call, 코딩 행동 강화
 korean-domain     -> 한국어 법률/금융 응답 정렬
+terminal-tool     -> 터미널, tool-call, 코딩 행동 강화
 behavior-core     -> 전체 행동 보정 core
 ```
+
+2026-05-29 Colab smoke 기준으로 공개 pretraining checkpoint는 다음 문제가 보였습니다.
+
+```text
+terminal command prompt:
+  명령만 요구했는데 영어 agent reasoning으로 새는 경우가 있음.
+
+finance QA:
+  "환율 변동" 같은 짧은 구문 반복이 발생.
+
+legal JSON:
+  JSON 형태는 어느 정도 맞추지만 필드명/요지 환각이 남음.
+```
+
+따라서 첫 LoRA는 지식 추가가 아니라 output behavior correction입니다. 추천 순서는
+`behavior-mini -> korean-domain -> terminal-tool -> behavior-core`입니다. 한국어 자체가 흔들리면
+`korean-domain`을 먼저 보고, terminal/tool 명령 형식이 더 큰 문제면 `terminal-tool`을 먼저 봅니다.
 
 ## 추가된 코드
 
@@ -88,9 +105,11 @@ GPUs:                8
 global_batch_size:   32,768 token slots
 LoRA rank:           16
 LoRA alpha:          32.0
-LR:                  1.0e-4
+LR:                  8.0e-5
 epochs:              1
 base weight:         EMA weight
+step save interval:  1,000
+keep local steps:    latest 2 step adapters
 ```
 
 ## 후보별 실행
@@ -206,12 +225,27 @@ bash scripts/run_kohrm_lora_experiments.sh all
 
 ```text
 behavior-mini
-terminal-tool
 korean-domain
+terminal-tool
 behavior-core
 ```
 
 GPU를 오래 잡으므로, 실제로는 `behavior-mini`부터 확인하는 것을 권장합니다.
+
+첫 진단용 세 후보만 돌리려면:
+
+```bash
+export RESUME_FROM=/path/to/base/checkpoint
+bash scripts/run_kohrm_lora_experiments.sh phase1
+```
+
+이 명령은 다음 순서입니다.
+
+```text
+behavior-mini
+korean-domain
+terminal-tool
+```
 
 ## 직접 torchrun 실행
 
@@ -233,7 +267,9 @@ torchrun --standalone --nproc_per_node=8 train_lora.py \
   run_name=KoHRM-Text-1.4B-lora-behavior-mini-v1 \
   global_batch_size=32768 \
   epochs=1 \
-  lr=1.0e-4 \
+  lr=8.0e-5 \
+  checkpoint_step_interval=1000 \
+  checkpoint_keep_last=2 \
   lora.rank=16 \
   lora.alpha=32.0
 ```
@@ -251,12 +287,35 @@ lora_train_config.json
 
 `lora_epoch_1.pt`는 LoRA A/B tensor만 담습니다. base model 전체 weight를 다시 저장하지 않습니다.
 
+step checkpoint는 `checkpoint_keep_last` 값에 맞춰 최신 N개만 남기도록 pruning합니다.
+epoch checkpoint는 실험 결과 비교를 위해 남깁니다.
+
 ## 현재 제한
 
 ```text
 LoRA adapter merge-to-full-weight 스크립트는 아직 없음.
 LoRA adapter를 적용한 inference helper는 아직 없음.
 현 단계 목적은 SFT/RL 후보의 학습 산출물을 빠르게 만드는 것.
+```
+
+## SFT/LoRA prepared data on Hugging Face
+
+별도 데이터셋 repo:
+
+```text
+https://huggingface.co/datasets/LLM-OS-Models/KoHRM-Text-1.4B-sft-lora-data
+```
+
+업로드 스크립트:
+
+```bash
+python scripts/upload_sft_lora_data_to_hf.py
+```
+
+부분 업로드:
+
+```bash
+python scripts/upload_sft_lora_data_to_hf.py --only kohrm_sft_behavior_mini_v1
 ```
 
 이후 필요하면 다음을 추가합니다.
