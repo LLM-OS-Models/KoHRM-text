@@ -225,6 +225,10 @@ def load_kohrm(repo_dir: str | Path, device: str | None = None, max_gpu_memory_g
     return model, tokenizer, cfg
 
 
+def format_kohrm_prompt(prompt: str, condition_token: str = "<|object_ref_start|>") -> str:
+    return f"<|im_start|>{condition_token}{prompt}<|im_end|>"
+
+
 def _apply_repetition_penalty(logits: torch.Tensor, seen_ids: list[int], penalty: float) -> torch.Tensor:
     if penalty <= 1.0 or not seen_ids:
         return logits
@@ -234,9 +238,31 @@ def _apply_repetition_penalty(logits: torch.Tensor, seen_ids: list[int], penalty
     return logits
 
 
-def _sample_next(logits: torch.Tensor, temperature: float, top_p: float, seen_ids: list[int] | None = None, repetition_penalty: float = 1.0) -> int:
+def _apply_no_repeat_ngram(logits: torch.Tensor, seen_ids: list[int], ngram_size: int) -> torch.Tensor:
+    if ngram_size <= 0 or len(seen_ids) < ngram_size - 1:
+        return logits
+    prefix = tuple(seen_ids[-(ngram_size - 1):])
+    blocked: set[int] = set()
+    for idx in range(len(seen_ids) - ngram_size + 1):
+        if tuple(seen_ids[idx:idx + ngram_size - 1]) == prefix:
+            blocked.add(seen_ids[idx + ngram_size - 1])
+    if blocked:
+        logits[..., list(blocked)] = -torch.inf
+    return logits
+
+
+def _sample_next(
+    logits: torch.Tensor,
+    temperature: float,
+    top_p: float,
+    seen_ids: list[int] | None = None,
+    repetition_penalty: float = 1.0,
+    no_repeat_ngram_size: int = 0,
+) -> int:
     logits = logits.float()
-    logits = _apply_repetition_penalty(logits, seen_ids or [], repetition_penalty)
+    seen_ids = seen_ids or []
+    logits = _apply_repetition_penalty(logits, seen_ids, repetition_penalty)
+    logits = _apply_no_repeat_ngram(logits, seen_ids, no_repeat_ngram_size)
     if temperature <= 0:
         return int(torch.argmax(logits, dim=-1).item())
     probs = torch.softmax(logits / temperature, dim=-1)
@@ -252,22 +278,23 @@ def _sample_next(logits: torch.Tensor, temperature: float, top_p: float, seen_id
 
 
 @torch.inference_mode()
-def generate_text(
-    repo_dir: str | Path,
+def generate_from_loaded(
+    model: KoHRMTextForGeneration,
+    tokenizer: Tokenizer,
+    cfg: dict[str, Any],
     prompt: str,
     *,
     max_new_tokens: int = 64,
     max_seq_len: int = 512,
     temperature: float = 0.0,
     top_p: float = 0.9,
-    repetition_penalty: float = 1.08,
+    repetition_penalty: float = 1.18,
+    no_repeat_ngram_size: int = 4,
     condition_token: str = "<|object_ref_start|>",
-    device: str | None = None,
 ) -> str:
-    model, tokenizer, cfg = load_kohrm(repo_dir, device=device, max_gpu_memory_gib=14.0)
     dev = next(model.parameters()).device
     dtype = next(model.parameters()).dtype
-    wrapped = f"<|im_start|>{condition_token}{prompt}<|im_end|>"
+    wrapped = format_kohrm_prompt(prompt, condition_token=condition_token)
     input_ids = tokenizer.encode(wrapped, add_special_tokens=False).ids
     if len(input_ids) + max_new_tokens + 1 > max_seq_len:
         raise ValueError(f"Prompt plus generation exceeds max_seq_len={max_seq_len}: prompt_tokens={len(input_ids)}")
@@ -287,7 +314,7 @@ def generate_text(
     stop_ids = {int(x) for x in stop_ids if x is not None}
     out_ids: list[int] = []
     seen_ids = list(input_ids)
-    next_id = _sample_next(logits, temperature, top_p, seen_ids, repetition_penalty)
+    next_id = _sample_next(logits, temperature, top_p, seen_ids, repetition_penalty, no_repeat_ngram_size)
     for _ in range(max_new_tokens):
         if next_id in stop_ids:
             break
@@ -297,9 +324,39 @@ def generate_text(
         pos = torch.tensor([[cache_pos]], device=dev, dtype=torch.long)
         logits = model(token, pos, caches=caches, cache_pos=cache_pos)[:, -1, :]
         cache_pos += 1
-        next_id = _sample_next(logits, temperature, top_p, seen_ids, repetition_penalty)
+        next_id = _sample_next(logits, temperature, top_p, seen_ids, repetition_penalty, no_repeat_ngram_size)
 
     return tokenizer.decode(out_ids, skip_special_tokens=True).strip()
+
+
+@torch.inference_mode()
+def generate_text(
+    repo_dir: str | Path,
+    prompt: str,
+    *,
+    max_new_tokens: int = 64,
+    max_seq_len: int = 512,
+    temperature: float = 0.0,
+    top_p: float = 0.9,
+    repetition_penalty: float = 1.18,
+    no_repeat_ngram_size: int = 4,
+    condition_token: str = "<|object_ref_start|>",
+    device: str | None = None,
+) -> str:
+    model, tokenizer, cfg = load_kohrm(repo_dir, device=device, max_gpu_memory_gib=14.0)
+    return generate_from_loaded(
+        model,
+        tokenizer,
+        cfg,
+        prompt,
+        max_new_tokens=max_new_tokens,
+        max_seq_len=max_seq_len,
+        temperature=temperature,
+        top_p=top_p,
+        repetition_penalty=repetition_penalty,
+        no_repeat_ngram_size=no_repeat_ngram_size,
+        condition_token=condition_token,
+    )
 
 
 def main() -> None:
@@ -310,7 +367,8 @@ def main() -> None:
     parser.add_argument("--max-seq-len", type=int, default=512)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--top-p", type=float, default=0.9)
-    parser.add_argument("--repetition-penalty", type=float, default=1.08)
+    parser.add_argument("--repetition-penalty", type=float, default=1.18)
+    parser.add_argument("--no-repeat-ngram-size", type=int, default=4)
     parser.add_argument("--device", default=None)
     args = parser.parse_args()
     print(generate_text(
@@ -321,6 +379,7 @@ def main() -> None:
         temperature=args.temperature,
         top_p=args.top_p,
         repetition_penalty=args.repetition_penalty,
+        no_repeat_ngram_size=args.no_repeat_ngram_size,
         device=args.device,
     ))
 
