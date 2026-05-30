@@ -259,44 +259,47 @@ upstream README에 있는 것:
 
 ## 현재 노트북 해석 기준
 
-`notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb`는 최종 벤치마크가 아니라 중간 checkpoint sanity check입니다.
+`notebooks/KoHRM_Text_1_4B_Colab_T4_Long_Knowledge_Probe.ipynb`는 최종 벤치마크가 아니라 pretraining-stage checkpoint의 긴 생성 확인용 노트북입니다. 기존 `Smoke_Test` 파일명은 링크 호환을 위해 남기지만, 내용은 같은 long knowledge probe로 맞춥니다.
 
-나쁜 출력의 원인 후보:
-
-```text
-1. checkpoint가 아직 pretraining 중간이라 지시 준수/반복 억제가 덜 됨
-2. terminal/coding을 한국어 prompt로 물어 training distribution과 어긋남
-3. direct condition과 stop token을 정확히 쓰지 않음
-4. decoding이 너무 greedy라 반복 local optimum에 빠짐
-5. 아직 LoRA/SFT/RL post-training 전이라 JSON-only/command-only alignment가 약함
-```
-
-수정된 노트북은 다음 원칙을 따릅니다.
+이번 노트북의 목적:
 
 ```text
-Korean legal/wiki/finance -> Korean prompts
-Terminal/coding/tool-call -> English prompts
-condition -> direct / <|object_ref_start|>
-first decode -> deterministic
-second decode -> optional low-temperature retry
-validation -> JSON parse / one-line command / code shape
+1. 현재 공개 checkpoint가 학습 데이터 도메인의 지식 신호를 갖고 있는지 확인
+2. 한국어 긴 문장 생성에서 반복, 깨진 토큰, placeholder artifact가 생기는지 확인
+3. public model.safetensors + kohrm_colab_generate.py runtime이 정상 prompt wrapper를 쓰는지 확인
+4. checkpoint 간 개선을 같은 prompt로 비교
 ```
 
-또한 probe를 두 그룹으로 나눕니다.
+노트북 prompt는 실제 사전학습 데이터 생성 방식과 맞춥니다.
 
 ```text
-pretraining-distribution probes
-  목적: 현재 checkpoint가 해당 도메인/형식의 신호를 배우고 있는지 확인
-  예: 짧은 한국어 금융 설명, 법률 조문 핵심 내용, 영어 terminal concept continuation
+BCAI finance
+  prompt: 실제 금융 QA 질문을 그대로 사용
 
-strict post-training probes
-  목적: 나중에 SFT/LoRA/RL 후 반드시 맞춰야 하는 행동을 측정
-  예: JSON 객체만 출력, bash command 한 줄만 출력, Python 함수만 출력
+Korean Wikipedia
+  prompt: scripts/build_kowiki_raw_hrm_jsonl.py의 원문 학습 instruction 스타일 사용
+
+Korean law/local regulation
+  prompt: scripts/build_legal_raw_hrm_jsonl.py의 원문 학습 instruction 스타일 사용
+
+Terminal/coding conversation
+  prompt: terminal/coding 작업 대화에서 assistant가 이어 쓸 분석/계획/명령/응답을 작성하는 스타일 사용
 ```
 
-따라서 현재 SFT 전 checkpoint가 strict probe에서 깨지는 것은 이상 현상이 아닙니다. 특히 사용자가 보여준 `ganjang`, `<br>A`, 잘못된 JSON schema, command 대신 설명문 출력은 prompt 하나로 해결할 문제가 아니라, 아직 behavior post-training이 끝나지 않았다는 신호로 봐야 합니다.
+명시적으로 제외한 것:
 
-프롬프트도 학습 데이터와 맞춰 단순하게 둡니다. 과도한 meta instruction을 덧붙이면 SFT 전 모델에서는 오히려 instruction token 자체를 출력하거나, 설명문/영어 reasoning 형태로 새기 쉬우므로 smoke test에는 복잡한 prompt engineering을 넣지 않습니다.
+```text
+JSON-only validator
+one-line command validator
+code-only validator
+PASS/WARN/FAIL scorecard
+과도한 meta instruction
+학습 데이터에 없던 artificial benchmark wrapper
+```
+
+이유는 단순합니다. 현재 checkpoint는 아직 SFT/LoRA/RL로 행동 정렬을 끝낸 chat model이 아니므로, strict JSON/command/code 과제를 넣으면 PT 지식 확인이 아니라 post-training 미완료 상태만 크게 보입니다. 사용자가 Colab에서 본 `ganjang`, `<br>A`, `Yes`, `B`, 엉뚱한 JSON schema 같은 출력은 notebook probe 설계가 목적과 어긋난 탓도 있었고, SFT 전 checkpoint에 strict assistant behavior를 요구한 탓도 있었습니다.
+
+따라서 PT 단계 확인은 긴 텍스트 생성으로 봅니다. 출력이 길게 이어지면서 도메인 용어, 문체, 문장 구조, 반복 억제가 살아나는지 확인하고, strict 포맷 준수는 별도 SFT/LoRA/RL 후보 데이터로 평가합니다.
 
 논문 Appendix D의 inference-time auto-guidance는 recurrent loop 중간 logits를 final logits와 보간/외삽하는 방식입니다. 이는 future experiment로 의미가 있지만, 현재 Colab helper는 공개 `model.safetensors`를 가장 단순하고 재현 가능하게 확인하는 경로이므로 standard full-depth logits만 씁니다. auto-guidance는 benchmark를 고치는 대체제가 아니라, checkpoint와 post-training이 안정된 뒤 추가로 실험할 runtime option입니다.
 

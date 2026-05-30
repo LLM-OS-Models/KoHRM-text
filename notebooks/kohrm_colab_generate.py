@@ -2,8 +2,8 @@
 
 This file intentionally avoids `transformers` and FlashAttention. It loads the
 public `model.safetensors` export and runs HRM-Text generation with PyTorch
-scaled-dot-product attention. It is built for smoke generation tests on Colab
-T4 and small CUDA machines.
+scaled-dot-product attention. It is built for long pretraining-checkpoint
+knowledge probes on Colab T4 and small CUDA machines.
 """
 
 from __future__ import annotations
@@ -298,11 +298,14 @@ def _sample_next(
     seen_ids: list[int] | None = None,
     repetition_penalty: float = 1.0,
     no_repeat_ngram_size: int = 0,
+    blocked_ids: set[int] | None = None,
 ) -> int:
     logits = logits.float()
     seen_ids = seen_ids or []
     logits = _apply_repetition_penalty(logits, seen_ids, repetition_penalty)
     logits = _apply_no_repeat_ngram(logits, seen_ids, no_repeat_ngram_size)
+    if blocked_ids:
+        logits[..., list(blocked_ids)] = -torch.inf
     if temperature <= 0:
         return int(torch.argmax(logits, dim=-1).item())
     probs = torch.softmax(logits / temperature, dim=-1)
@@ -325,6 +328,7 @@ def generate_from_loaded(
     prompt: str,
     *,
     max_new_tokens: int = 64,
+    min_new_tokens: int = 0,
     max_seq_len: int = 512,
     temperature: float = 0.0,
     top_p: float = 0.9,
@@ -355,9 +359,17 @@ def generate_from_loaded(
     stop_ids = {int(x) for x in stop_ids if x is not None}
     out_ids: list[int] = []
     seen_ids = list(input_ids)
-    next_id = _sample_next(logits, temperature, top_p, seen_ids, repetition_penalty, no_repeat_ngram_size)
+    next_id = _sample_next(
+        logits,
+        temperature,
+        top_p,
+        seen_ids,
+        repetition_penalty,
+        no_repeat_ngram_size,
+        blocked_ids=stop_ids if min_new_tokens > 0 else None,
+    )
     for _ in range(max_new_tokens):
-        if next_id in stop_ids:
+        if next_id in stop_ids and len(out_ids) >= min_new_tokens:
             break
         out_ids.append(next_id)
         seen_ids.append(next_id)
@@ -365,7 +377,15 @@ def generate_from_loaded(
         pos = torch.tensor([[cache_pos]], device=dev, dtype=torch.long)
         logits = model(token, pos, caches=caches, cache_pos=cache_pos)[:, -1, :]
         cache_pos += 1
-        next_id = _sample_next(logits, temperature, top_p, seen_ids, repetition_penalty, no_repeat_ngram_size)
+        next_id = _sample_next(
+            logits,
+            temperature,
+            top_p,
+            seen_ids,
+            repetition_penalty,
+            no_repeat_ngram_size,
+            blocked_ids=stop_ids if len(out_ids) < min_new_tokens else None,
+        )
 
     return tokenizer.decode(out_ids, skip_special_tokens=True).strip()
 
@@ -376,6 +396,7 @@ def generate_text(
     prompt: str,
     *,
     max_new_tokens: int = 64,
+    min_new_tokens: int = 0,
     max_seq_len: int = 512,
     temperature: float = 0.0,
     top_p: float = 0.9,
@@ -392,6 +413,7 @@ def generate_text(
         cfg,
         prompt,
         max_new_tokens=max_new_tokens,
+        min_new_tokens=min_new_tokens,
         max_seq_len=max_seq_len,
         temperature=temperature,
         top_p=top_p,
@@ -403,21 +425,23 @@ def generate_text(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run a small KoHRM-Text generation test without transformers.")
+    parser = argparse.ArgumentParser(description="Run a KoHRM-Text long generation probe without transformers.")
     parser.add_argument("repo_dir", type=Path, help="Directory containing config.json, tokenizer.json, and model.safetensors")
     parser.add_argument(
         "--prompt",
         default=(
-            "Return one bash command only. Task: find the 10 largest files under "
-            "the current directory, excluding .git, sorted by size descending."
+            "다음은 한국어 위키백과 문서 원문 일부입니다. 백과사전식 한국어, "
+            "고유명사, 날짜, 기술/사회/문화 지식을 그대로 학습하십시오.\n\n"
+            "[문서명]\n훈민정음\n\n[부분]\n1/1"
         ),
     )
-    parser.add_argument("--max-new-tokens", type=int, default=64)
-    parser.add_argument("--max-seq-len", type=int, default=512)
-    parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--top-p", type=float, default=0.9)
-    parser.add_argument("--repetition-penalty", type=float, default=1.18)
-    parser.add_argument("--no-repeat-ngram-size", type=int, default=4)
+    parser.add_argument("--max-new-tokens", type=int, default=384)
+    parser.add_argument("--min-new-tokens", type=int, default=160)
+    parser.add_argument("--max-seq-len", type=int, default=1536)
+    parser.add_argument("--temperature", type=float, default=0.65)
+    parser.add_argument("--top-p", type=float, default=0.92)
+    parser.add_argument("--repetition-penalty", type=float, default=1.05)
+    parser.add_argument("--no-repeat-ngram-size", type=int, default=0)
     parser.add_argument(
         "--condition",
         default="direct",
@@ -434,6 +458,7 @@ def main() -> None:
         args.repo_dir,
         args.prompt,
         max_new_tokens=args.max_new_tokens,
+        min_new_tokens=args.min_new_tokens,
         max_seq_len=args.max_seq_len,
         temperature=args.temperature,
         top_p=args.top_p,

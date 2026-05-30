@@ -168,15 +168,15 @@ Prompt format used by the project-side inference code:
 <|im_start|><|object_ref_start|>YOUR_PROMPT_HERE<|im_end|>
 ```
 
-### Colab T4 Quick Generation
+### Colab T4 Long Knowledge Probe
 
 A ready-to-run Colab notebook is available in the project repo:
 
-https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb
+https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_Colab_T4_Long_Knowledge_Probe.ipynb
 
-The notebook downloads the latest public files and runs training-aligned probes on a Colab T4. Korean law/wiki/finance probes use Korean prompts. Terminal, tool-call, and coding probes use English prompts because that is closer to the current training mix for those behaviors.
+The notebook downloads the latest public files and runs long-form generation prompts that match the current pretraining data style. It is intended to inspect knowledge signal, Korean fluency, repetition, and runtime correctness after pretraining-stage checkpoints.
 
-This notebook is a pretraining-checkpoint probe, not a final chat/SFT benchmark. Strict JSON-only, command-only, and code-only failures before SFT/LoRA/RL should be interpreted as post-training readiness signals, not as final model quality.
+This is not a final chat/SFT benchmark. It intentionally avoids format-constrained SFT-style tests because the public checkpoint is still a pretraining-stage model and has not been behavior-aligned by SFT/LoRA/RL.
 
 It intentionally avoids `transformers`, `AutoTokenizer`, and `AutoModelForCausalLM`. Instead, it uses:
 
@@ -231,23 +231,51 @@ spec.loader.exec_module(kohrm)
 model, tokenizer, cfg = kohrm.load_kohrm(repo_dir, max_gpu_memory_gib=14.0)
 
 settings = dict(
-    max_seq_len=512,
-    temperature=0.0,
-    top_p=1.0,
-    repetition_penalty=1.20,
-    no_repeat_ngram_size=4,
+    max_seq_len=1536,
+    temperature=0.65,
+    top_p=0.92,
+    repetition_penalty=1.05,
+    no_repeat_ngram_size=0,
     condition="direct",
 )
 
 prompts = {
-    "ko_finance": "환율 변동이 개인 투자에 미치는 영향과 대비 전략을 한국어로 4문장 이내로 설명하세요. 같은 표현을 반복하지 마세요.",
-    "en_terminal": "Return one bash command only. No explanation. Task: find the 10 largest files under the current directory, excluding .git, sorted by size descending.",
+    "finance": "환율 변동이 개인 투자에 미치는 영향과 대비 전략은 무엇인가요?",
+    "kowiki_style": """다음은 한국어 위키백과 문서 원문 일부입니다. 백과사전식 한국어, 고유명사, 날짜, 기술/사회/문화 지식을 그대로 학습하십시오.
+
+[문서명]
+훈민정음
+
+[부분]
+1/1""",
+    "legal_style": """다음은 대한민국 법령/자치법규 원문 일부입니다. 법률 한국어, 조문 구조, 번호 체계, 기관명, 시행일자 표현을 그대로 학습하십시오.
+
+[자료종류]
+law
+
+[문서명]
+형법
+
+[경로]
+kr/형법/법률.md
+
+[부분]
+1/1""",
 }
 
 for name, prompt in prompts.items():
     print("=" * 80)
     print(name)
-    print(kohrm.generate_from_loaded(model, tokenizer, cfg, prompt, max_new_tokens=96, **settings))
+    output = kohrm.generate_from_loaded(
+        model,
+        tokenizer,
+        cfg,
+        prompt,
+        max_new_tokens=384,
+        min_new_tokens=160,
+        **settings,
+    )
+    print(output)
 ```
 
 Expected result:
@@ -257,7 +285,7 @@ Expected result:
 - The helper should load the 1.38B public `model.safetensors` export.
 - On Colab T4, generation runs in fp16 through PyTorch scaled-dot-product attention.
 - First generation can take a few minutes because it downloads and loads the full weight file.
-- This is a rolling pretraining checkpoint. If JSON-only, command-only, or Korean repetition behavior is weak, compare later checkpoints with the same notebook before drawing final conclusions.
+- This is a rolling pretraining checkpoint. Compare later checkpoints with the same long prompts before drawing final conclusions.
 
 Prompt format used by the helper, matching upstream `InferenceCheckpoint.tokenize_prompt()`:
 
@@ -505,15 +533,15 @@ schedule: H2L3 recurrent computation
 <|im_start|><|object_ref_start|>여기에_프롬프트를_넣습니다<|im_end|>
 ```
 
-### Colab T4 빠른 생성
+### Colab T4 긴 지식 생성 확인
 
 바로 실행할 수 있는 Colab 노트북은 project repo에 있습니다.
 
-https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb
+https://github.com/LLM-OS-Models/KoHRM-text/blob/main/notebooks/KoHRM_Text_1_4B_Colab_T4_Long_Knowledge_Probe.ipynb
 
-이 노트북은 Colab T4에서 최신 공개 파일을 다운로드하고 학습 포맷에 맞춘 probe를 실행합니다. 한국어 법률/wiki/금융은 한국어 prompt로, 터미널/툴콜/코딩은 현재 학습 mix에 더 가까운 영어 prompt로 확인합니다.
+이 노트북은 Colab T4에서 최신 공개 파일을 다운로드하고 현재 사전학습 데이터와 같은 스타일의 긴 생성 prompt를 실행합니다. 목적은 pretraining stage checkpoint의 지식 신호, 한국어 유창성, 반복 여부, 공개 `model.safetensors` runtime 동작을 직접 확인하는 것입니다.
 
-이 노트북은 pretraining checkpoint 확인용이지, 최종 chat/SFT benchmark가 아닙니다. SFT/LoRA/RL 전 단계에서 JSON-only, command-only, code-only가 실패하면 이것은 최종 품질 판정이 아니라 post-training에서 고쳐야 할 readiness signal로 봐야 합니다.
+이 노트북은 최종 chat/SFT benchmark가 아닙니다. 공개 checkpoint는 아직 SFT/LoRA/RL로 행동 정렬을 끝낸 모델이 아니므로, 포맷 준수 중심의 SFT식 과제는 의도적으로 제외했습니다.
 
 일부 Colab 환경에서 `transformers`가 `torchvision::nms` import 오류를 내거나 custom architecture를 못 찾는 문제가 생길 수 있으므로, 이 노트북은 `AutoTokenizer`와 `AutoModelForCausalLM`을 쓰지 않습니다. 대신 아래 경로를 사용합니다.
 
@@ -568,23 +596,51 @@ spec.loader.exec_module(kohrm)
 model, tokenizer, cfg = kohrm.load_kohrm(repo_dir, max_gpu_memory_gib=14.0)
 
 settings = dict(
-    max_seq_len=512,
-    temperature=0.0,
-    top_p=1.0,
-    repetition_penalty=1.20,
-    no_repeat_ngram_size=4,
+    max_seq_len=1536,
+    temperature=0.65,
+    top_p=0.92,
+    repetition_penalty=1.05,
+    no_repeat_ngram_size=0,
     condition="direct",
 )
 
 prompts = {
-    "ko_finance": "환율 변동이 개인 투자에 미치는 영향과 대비 전략을 한국어로 4문장 이내로 설명하세요. 같은 표현을 반복하지 마세요.",
-    "en_terminal": "Return one bash command only. No explanation. Task: find the 10 largest files under the current directory, excluding .git, sorted by size descending.",
+    "finance": "환율 변동이 개인 투자에 미치는 영향과 대비 전략은 무엇인가요?",
+    "kowiki_style": """다음은 한국어 위키백과 문서 원문 일부입니다. 백과사전식 한국어, 고유명사, 날짜, 기술/사회/문화 지식을 그대로 학습하십시오.
+
+[문서명]
+훈민정음
+
+[부분]
+1/1""",
+    "legal_style": """다음은 대한민국 법령/자치법규 원문 일부입니다. 법률 한국어, 조문 구조, 번호 체계, 기관명, 시행일자 표현을 그대로 학습하십시오.
+
+[자료종류]
+law
+
+[문서명]
+형법
+
+[경로]
+kr/형법/법률.md
+
+[부분]
+1/1""",
 }
 
 for name, prompt in prompts.items():
     print("=" * 80)
     print(name)
-    print(kohrm.generate_from_loaded(model, tokenizer, cfg, prompt, max_new_tokens=96, **settings))
+    output = kohrm.generate_from_loaded(
+        model,
+        tokenizer,
+        cfg,
+        prompt,
+        max_new_tokens=384,
+        min_new_tokens=160,
+        **settings,
+    )
+    print(output)
 ```
 
 정상 결과:
@@ -594,7 +650,7 @@ for name, prompt in prompts.items():
 - helper가 1.38B 공개 `model.safetensors` 변환본을 로드합니다.
 - Colab T4에서는 fp16 PyTorch scaled-dot-product attention으로 생성합니다.
 - 첫 실행은 2.8 GiB급 weight 다운로드와 로드 때문에 몇 분 걸릴 수 있습니다.
-- 현재 repo는 rolling pretraining checkpoint입니다. JSON-only, command-only, 한국어 반복 억제가 약하게 보이면 같은 노트북으로 이후 checkpoint와 비교해야 합니다.
+- 현재 repo는 rolling pretraining checkpoint입니다. 같은 긴 prompt로 이후 checkpoint와 비교해서 지식, 문체, 반복 여부를 봐야 합니다.
 
 helper가 쓰는 prompt 형식은 upstream `InferenceCheckpoint.tokenize_prompt()`와 맞춥니다.
 

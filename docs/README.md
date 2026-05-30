@@ -50,9 +50,13 @@
 
   Hugging Face 업로드 정책, 업로드 경로 수정, Colab T4 생성 노트북을 정리합니다.
 
+- [../notebooks/KoHRM_Text_1_4B_Colab_T4_Long_Knowledge_Probe.ipynb](../notebooks/KoHRM_Text_1_4B_Colab_T4_Long_Knowledge_Probe.ipynb)
+
+  Colab T4에서 공개 weight를 받아 사전학습 데이터와 같은 포맷으로 긴 텍스트를 생성합니다. 금융 QA, 한국어 위키 원문 스타일, 한국 법률/자치법규 원문 스타일, 터미널 대화 스타일 prompt로 지식 신호와 반복 여부를 직접 확인합니다.
+
 - [../notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb](../notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb)
 
-  Colab T4에서 공개 weight를 받아 학습 포맷에 맞춘 pretraining checkpoint probe를 실행합니다. strict JSON/command/code 결과는 최종 SFT 성능이 아니라 post-training 준비 상태로 해석합니다.
+  기존 링크 호환용 파일입니다. 내용은 long knowledge probe와 동일합니다.
 
 - [../notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb](../notebooks/KoHRM_SFT_LoRA_Data_Runbook.ipynb)
 

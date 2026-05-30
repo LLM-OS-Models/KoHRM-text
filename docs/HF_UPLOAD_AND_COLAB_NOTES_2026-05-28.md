@@ -106,7 +106,8 @@ Therefore:
 
 Notebook:
 
-- `notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb`
+- `notebooks/KoHRM_Text_1_4B_Colab_T4_Long_Knowledge_Probe.ipynb`
+- `notebooks/KoHRM_Text_1_4B_Colab_T4_Smoke_Test.ipynb` is kept as a compatibility path and has the same long-probe content.
 
 Purpose:
 
@@ -114,15 +115,17 @@ Purpose:
 - Download tokenizer/config, `model.safetensors`, and `kohrm_colab_generate.py`.
 - Validate Korean/terminal/tool-call tokenizer behavior without importing `transformers`.
 - Inspect safetensors tensor shapes before full load.
-- Run a short generation call with the PyTorch SDPA helper.
+- Run long generation prompts that match the current pretraining data style.
+- Inspect knowledge signal, Korean fluency, repetition, and placeholder artifacts.
 - Confirm that plain Transformers generation is not the supported path yet.
 
 T4 design choice:
 
 - The notebook avoids `transformers`, `AutoTokenizer`, and `AutoModelForCausalLM`.
 - The helper loads the public 1.38B `model.safetensors` export and casts to fp16 on CUDA.
-- Default generation settings are intentionally small: `max_seq_len=512`, `max_new_tokens=64`.
+- Default generation settings are for long PT knowledge probing: `max_seq_len=1536`, `max_new_tokens=384`, `min_new_tokens=160`.
 - CPU generation is possible for plumbing checks but is expected to be very slow.
+- Format-constrained SFT-style probes are intentionally not part of this notebook. They belong in the later LoRA/SFT/RL evaluation path.
 
 ## Manual Verification Commands
 
