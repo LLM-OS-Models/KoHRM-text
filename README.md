@@ -362,6 +362,9 @@ conversion/convert_to_hf.py
 scripts/watch_stage2b_then_finish_chain.py
   +-- stage2b 이후 stage3b/4b/1c/2c/3c/4c 자동 continuation
 
+scripts/watch_stage4c_then_epoch4_chain.py
+  +-- stage4c 완료 후 stage1d/2d/3d/4d, 즉 데이터 pass 4 자동 continuation
+
 scripts/watch_chain_step_checkpoints_upload.py
   +-- step checkpoint raw + converted upload watcher
 ```
@@ -369,8 +372,8 @@ scripts/watch_chain_step_checkpoints_upload.py
 ## 다음 작업
 
 ```text
-1. stage2b를 끊기지 않게 완료한다.
-2. watcher가 stage3b -> stage4b -> stage1c -> stage2c -> stage3c -> stage4c를 이어가게 둔다.
+1. 현재 stage2c 이후 stage3c -> stage4c를 끊기지 않게 완료한다.
+2. `watch_stage4c_then_epoch4_chain.py`가 stage4c 완료 후 stage1d -> stage2d -> stage3d -> stage4d를 이어가게 둔다.
 3. checkpoint 업로드와 model card 갱신을 계속한다.
-4. planned continuation 이후 evaluation과 SFT subset 구성을 진행한다.
+4. pass 4 완료본을 평가하고 SFT/LoRA/RL subset 구성을 진행한다.
 ```

@@ -382,6 +382,11 @@ stage1c -> stage2c -> stage3c -> stage4c
   |          |          |          |
   v          v          v          v
 pass 3 data1 pass3 data2 pass3 data3 pass3 data4
+
+stage1d -> stage2d -> stage3d -> stage4d
+  |          |          |          |
+  v          v          v          v
+pass 4 data1 pass4 data2 pass4 data3 pass4 data4
 ```
 
 각 stage는 코드상 `epochs=1`로 실행됩니다. 그래서 final checkpoint 이름은 모두 `fsdp2_epoch_1`입니다. “몇 번째 pass인가”는 parent stage 이름으로 구분해야 합니다.
@@ -392,6 +397,7 @@ pass 3 data1 pass3 data2 pass3 data3 pass3 data4
 stage2/fsdp2_epoch_1   = pass 1 data 2 완료
 stage2b/fsdp2_epoch_1  = pass 2 data 2 완료
 stage2c/fsdp2_epoch_1  = pass 3 data 2 완료 예정
+stage2d/fsdp2_epoch_1  = pass 4 data 2 완료 예정
 ```
 
 ## 데이터 pass 기준 현재 상태

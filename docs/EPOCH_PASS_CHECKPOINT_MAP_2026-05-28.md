@@ -114,6 +114,7 @@ stage2b(active, pass 2 data 2)
 stage2/fsdp2_epoch_1   = pass 1 data 2 완료
 stage2b/fsdp2_epoch_1  = pass 2 data 2 완료
 stage2c/fsdp2_epoch_1  = pass 3 data 2 완료 예정
+stage2d/fsdp2_epoch_1  = pass 4 data 2 완료 예정
 ```
 
 즉 `epoch_1`이라는 파일명만 보면 안 되고, 반드시 parent stage 이름을 같이 봐야 합니다.
