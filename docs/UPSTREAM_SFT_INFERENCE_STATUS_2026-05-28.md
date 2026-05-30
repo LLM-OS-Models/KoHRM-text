@@ -28,6 +28,8 @@ CPU 실사용 generation:
 
 원본 repo에는 full-parameter SFT 방법이 있습니다.
 
+정확히는 별도 SFT trainer가 있는 것이 아니라, `pretrain.py`를 `cfg_sft.yaml`로 다시 실행하는 checkpoint continue-training 경로입니다. 논문 본문에서 강조하는 학습은 SFT 단계가 아니라 scratch `single-stage task-completion pretraining`입니다.
+
 구성:
 
 ```text
@@ -35,6 +37,8 @@ scripts/prepare_sft_data.py
 config/cfg_sft.yaml
 pretrain.py --config-name cfg_sft
 ```
+
+`scripts/prepare_sft_data.py`는 upstream 이름과 README 기준으로 SFT 전처리 스크립트입니다. 하지만 산출물은 일반적인 HRM V1Dataset instruction-response binary layout입니다. 그래서 KoHRM에서는 SFT/LoRA 후보뿐 아니라 instruction pretraining corpus 전처리에도 같은 코드를 재사용합니다.
 
 원본 README의 요지는 다음입니다.
 

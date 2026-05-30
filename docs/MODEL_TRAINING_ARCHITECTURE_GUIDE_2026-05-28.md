@@ -326,6 +326,8 @@ model context:        4096
 
 현재 KoHRM recipe에서는 PT와 SFT의 수식은 거의 같습니다. 둘 다 instruction-response PrefixLM response-only loss입니다.
 
+다만 논문 기준의 현재 대규모 run은 SFT가 아니라 scratch `single-stage task-completion pretraining`입니다. upstream repo의 SFT는 같은 V1Dataset/`pretrain.py` 경로를 `cfg_sft.yaml`로 다시 실행해 pretrained checkpoint를 continue-train하는 후속 단계입니다.
+
 차이는 운영 regime입니다.
 
 PT:

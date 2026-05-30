@@ -34,6 +34,8 @@ synth  -> <|quad_end|>
 
 ## 왜 PT도 SFT도 아닌 중간인가
 
+정확히 말하면 논문 기준의 현재 대규모 학습은 SFT가 아니라 `single-stage task-completion pretraining`입니다. 다만 objective 수식과 데이터 layout이 SFT와 매우 비슷하기 때문에 “PT와 SFT의 중간처럼 보이는” 구조입니다.
+
 일반 raw-text PT:
 
 ```text
@@ -235,8 +237,9 @@ same wrapped prefix
 upstream README에 있는 것:
 
 - full-parameter SFT 절차.
+- 별도 SFT trainer가 아니라 `pretrain.py --config-name cfg_sft`로 checkpoint를 continue-train하는 방식.
 - JSONL input format: `instruction`, `response`, optional `condition`.
-- `prepare_sft_data.py`로 V1Dataset 준비.
+- `prepare_sft_data.py`로 V1Dataset 준비. 파일명은 SFT지만 산출물은 일반적인 HRM instruction-response V1Dataset layout이라 KoHRM PT 전처리에도 재사용 가능.
 - `cfg_sft`로 checkpoint continue training.
 - native vLLM support는 in progress라고 명시.
 - `simple_inference_engine.py` 기반 compiled generation engine.

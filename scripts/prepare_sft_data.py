@@ -1,9 +1,12 @@
-"""Prepare SFT data for HRM-Text fine-tuning.
+"""Prepare HRM instruction-response data in the upstream SFT layout.
 
-Converts a generic JSONL into the V1Dataset binary layout that
-`dataset_new.py` consumes directly. Prompt construction (few-shot demos,
-schema injection, task framing, etc.) is the caller's responsibility —
-the `instruction` field is tokenized verbatim.
+This file keeps the upstream name `prepare_sft_data.py`, because upstream
+HRM-Text uses the same layout for full-parameter SFT. The actual output is a
+generic V1Dataset binary layout that `dataset_new.py` consumes directly.
+KoHRM uses that layout for both instruction pretraining and later SFT/LoRA.
+
+Prompt construction (few-shot demos, schema injection, task framing, etc.) is
+the caller's responsibility — the `instruction` field is tokenized verbatim.
 
 Input JSONL (one object per line):
     {"instruction": "<full prompt>", "response": "<expected output>",

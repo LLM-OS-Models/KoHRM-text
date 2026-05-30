@@ -144,6 +144,10 @@ pass 3: data 1/2/3/4 예약
 
   repo의 각 폴더와 핵심 코드 역할, 데이터 전처리부터 학습, checkpoint, HF 변환/업로드, 추론, SFT/LoRA까지 이어지는 실행 흐름입니다.
 
+- [docs/PT_SFT_PREPARE_DATA_CLARIFICATION_2026-05-31.md](docs/PT_SFT_PREPARE_DATA_CLARIFICATION_2026-05-31.md)
+
+  논문식 instruction pretraining, upstream SFT 경로, `prepare_sft_data.py`가 실제로 만드는 V1Dataset layout의 관계를 정리했습니다.
+
 - [docs/METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](docs/METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md)
 
   HRM-Text 논문 방식과 KoHRM 적용 차이를 정리했습니다.

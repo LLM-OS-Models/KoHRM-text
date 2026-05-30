@@ -258,7 +258,7 @@ token-based batch packing sampler입니다. 샘플 길이가 서로 다르기 �
 
 - `scripts/prepare_sft_data.py`
 
-  가장 중요한 전처리 스크립트입니다. JSONL/parquet row를 KoHRM V1Dataset 배열로 바꿉니다.
+  가장 중요한 전처리 스크립트입니다. upstream 이름은 SFT 준비 코드이지만, 실제 산출물은 HRM V1Dataset instruction-response binary layout입니다. 그래서 KoHRM에서는 SFT/LoRA뿐 아니라 논문식 instruction pretraining corpus 전처리에도 재사용합니다. JSONL/parquet row를 KoHRM V1Dataset 배열로 바꿉니다.
 
   핵심 특수 토큰:
 
@@ -738,4 +738,3 @@ LoRA/SFT 후보를 돌린다
   -> evaluation/benchmarks.py
   -> evaluation/engines.py
 ```
-

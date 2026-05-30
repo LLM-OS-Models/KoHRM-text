@@ -12,6 +12,8 @@ SFT batch size와 pretraining batch size는 완전히 다른 개념은 아닙니
 
 수식적으로는 현재 KoHRM-Text recipe의 PT와 SFT는 거의 같습니다. 둘 다 instruction-response PrefixLM response-only cross entropy입니다. 차이는 objective의 수식보다 데이터 규모와 품질, LR/batch/epoch/optimizer 정책, 평가 기준에서 납니다.
 
+단, 용어는 구분해야 합니다. HRM-Text 논문이 말하는 학습은 SFT가 아니라 scratch `single-stage task-completion pretraining`입니다. upstream repo의 SFT는 그 pretraining checkpoint를 `pretrain.py --config-name cfg_sft`로 이어 학습하는 full-parameter fine-tuning 경로입니다.
+
 현재 장기 pretraining 실행값은 다음과 같습니다.
 
 | 항목 | 값 |
@@ -70,6 +72,8 @@ ema: 0.999
 현재 KoHRM-Text에서는 PT와 SFT가 수식적으로 크게 다르지 않습니다.
 
 일반적인 LLM 문맥에서 pretraining은 raw text causal LM으로 모든 token에 next-token loss를 거는 경우가 많습니다. 하지만 HRM-Text 논문 방식과 현재 KoHRM-Text recipe는 처음부터 instruction-response pair를 PrefixLM으로 학습합니다. 그래서 우리의 PT도 이미 SFT와 같은 형태의 supervised instruction pretraining입니다.
+
+여기서 `supervised instruction pretraining`은 역할상 SFT가 아니라 PT입니다. scratch model의 기본 언어/지식/도구 능력을 만드는 단계이기 때문입니다.
 
 기본 loss는 다음처럼 볼 수 있습니다.
 

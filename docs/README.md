@@ -12,6 +12,10 @@
 
   repo의 각 폴더와 핵심 코드 역할, 데이터 전처리부터 학습, checkpoint, HF 변환/업로드, 추론, SFT/LoRA까지 이어지는 실행 흐름을 정리합니다.
 
+- [PT_SFT_PREPARE_DATA_CLARIFICATION_2026-05-31.md](PT_SFT_PREPARE_DATA_CLARIFICATION_2026-05-31.md)
+
+  논문식 instruction pretraining, upstream SFT 경로, `prepare_sft_data.py`가 실제로 만드는 V1Dataset layout의 관계를 명확히 정리합니다.
+
 - [METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md)
 
   HRM-Text 논문 방식과 KoHRM 적용 차이를 정리합니다.
