@@ -8,6 +8,10 @@
 
   모델 구조, PrefixLM, response-only loss, PT/SFT 관계, staged continuation을 한 번에 설명합니다.
 
+- [CODEBASE_GUIDE_2026-05-31.md](CODEBASE_GUIDE_2026-05-31.md)
+
+  repo의 각 폴더와 핵심 코드 역할, 데이터 전처리부터 학습, checkpoint, HF 변환/업로드, 추론, SFT/LoRA까지 이어지는 실행 흐름을 정리합니다.
+
 - [METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md)
 
   HRM-Text 논문 방식과 KoHRM 적용 차이를 정리합니다.

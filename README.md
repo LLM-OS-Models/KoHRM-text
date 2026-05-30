@@ -11,6 +11,7 @@
 - [핵심 개념](#핵심-개념)
 - [학습 상태](#학습-상태)
 - [문서 지도](#문서-지도)
+- [코드 구조](#코드-구조)
 - [데이터](#데이터)
 - [SFT/RL 후보](#sftrl-후보)
 - [토크나이저](#토크나이저)
@@ -139,6 +140,10 @@ pass 3: data 1/2/3/4 예약
 
   모델 구조, PrefixLM, response-only loss, PT/SFT 관계, staged continuation 설명입니다.
 
+- [docs/CODEBASE_GUIDE_2026-05-31.md](docs/CODEBASE_GUIDE_2026-05-31.md)
+
+  repo의 각 폴더와 핵심 코드 역할, 데이터 전처리부터 학습, checkpoint, HF 변환/업로드, 추론, SFT/LoRA까지 이어지는 실행 흐름입니다.
+
 - [docs/METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md](docs/METHODOLOGY_ARCHITECTURE_NOTES_2026-05-24.md)
 
   HRM-Text 논문 방식과 KoHRM 적용 차이를 정리했습니다.
@@ -236,6 +241,38 @@ pass 3: data 1/2/3/4 예약
 - [docs/PROGRESS_2026-05-23.md](docs/PROGRESS_2026-05-23.md)
 
   실제 진행 로그입니다.
+
+## 코드 구조
+
+자세한 코드베이스 지도는 [docs/CODEBASE_GUIDE_2026-05-31.md](docs/CODEBASE_GUIDE_2026-05-31.md)를 봅니다.
+
+짧은 실행 흐름:
+
+```text
+raw sources
+  -> scripts/build_*.py
+  -> scripts/prepare_sft_data.py
+  -> dataset_new.py + multipack_sampler.py
+  -> pretrain.py
+  -> models/baselines/hrm_nocarry_bp_warmup.py
+  -> FSDP2 checkpoints
+  -> scripts/watch_* + conversion/convert_to_hf.py
+  -> Hugging Face model/data repos
+  -> notebooks, evaluation, train_lora.py
+```
+
+핵심 진입점:
+
+```text
+pretraining:        pretrain.py
+dataset reader:     dataset_new.py
+batch packing:      multipack_sampler.py
+HRM architecture:   models/baselines/hrm_nocarry_bp_warmup.py
+PrefixLM attention: models/flash_attention_prefixlm_v2.py
+HF export:          conversion/convert_to_hf.py
+Colab inference:    notebooks/kohrm_colab_generate.py
+LoRA/SFT:           train_lora.py
+```
 
 ## 데이터
 
