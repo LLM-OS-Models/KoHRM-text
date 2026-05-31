@@ -102,20 +102,21 @@ raw data -> tokenizer -> V1Dataset -> PrefixLM batches -> HRM H/L recurrence -> 
 
 ## 학습 상태
 
-기준: 2026-05-28 KST
+기준: 2026-06-01 07:14 KST
 
-현재 실행은 `stage2b-hrm-full-nocap-extra-epoch1`입니다. `stage1b-hrm-fastcap-repeat` final checkpoint에서 이어받아 8 x H200으로 학습 중입니다.
+현재 실행은 `stage1d-hrm-fastcap-repeat3`입니다. `stage4c-korean-tool-finance-repeat2` epoch checkpoint에서 이어받아 8 x H200으로 epoch/pass 4를 시작했습니다.
 
 짧은 상태:
 
 ```text
-active stage:     stage2b-hrm-full-nocap-extra-epoch1
-pass view:        pass 2, data 2
-resume step:      317,814
+active stage:     stage1d-hrm-fastcap-repeat3
+pass view:        pass 4, data 1
+resume step:      702,956
+current step:     712,065 / 934,306
 global batch:     180,224 token slots/step
 per GPU batch:    22,528 token slots/step
 context length:   4,096 tokens
-speed:            about 1.02 step/s
+speed:            about 1.01 step/s
 checkpoint:       every 10,000 steps, keep latest 2 locally
 upload:           watcher uploads selected raw + converted checkpoints
 ```
@@ -124,11 +125,14 @@ upload:           watcher uploads selected raw + converted checkpoints
 
 ```text
 pass 1: data 1/2/3/4 완료
-pass 2: data 1 완료, data 2 진행 중
-pass 3: data 1/2/3/4 예약
+pass 2: data 1/2/3/4 완료
+pass 3: data 1/2/3/4 완료
+pass 4: data 1 진행 중, data 2/3/4 자동 이어가기 예정
 ```
 
 세부 checkpoint map은 [docs/EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md](docs/EPOCH_PASS_CHECKPOINT_MAP_2026-05-28.md)를 기준으로 봅니다.
+학습 시간, 논문 대비 차이, prepared data flow는 [docs/TRAINING_TIME_AND_DATA_FLOW_2026-06-01.md](docs/TRAINING_TIME_AND_DATA_FLOW_2026-06-01.md)에 정리했습니다.
+작은 decoded 학습 샘플은 [samples/prepared_training_data/](samples/prepared_training_data/)에서 확인할 수 있습니다.
 
 ## 문서 지도
 
@@ -143,6 +147,10 @@ pass 3: data 1/2/3/4 예약
 - [docs/CODEBASE_GUIDE_2026-05-31.md](docs/CODEBASE_GUIDE_2026-05-31.md)
 
   repo의 각 폴더와 핵심 코드 역할, 데이터 전처리부터 학습, checkpoint, HF 변환/업로드, 추론, SFT/LoRA까지 이어지는 실행 흐름입니다.
+
+- [docs/TRAINING_TIME_AND_DATA_FLOW_2026-06-01.md](docs/TRAINING_TIME_AND_DATA_FLOW_2026-06-01.md)
+
+  현재 epoch4 진행률, 예상 완료 시간, 논문/upstream 46시간 기준과의 차이, prepared data가 `pretrain.py`까지 들어가는 흐름입니다.
 
 - [docs/PT_SFT_PREPARE_DATA_CLARIFICATION_2026-05-31.md](docs/PT_SFT_PREPARE_DATA_CLARIFICATION_2026-05-31.md)
 
@@ -169,6 +177,10 @@ pass 3: data 1/2/3/4 예약
 - [docs/STAGED_TRAINING_RUNBOOK_2026-05-23.md](docs/STAGED_TRAINING_RUNBOOK_2026-05-23.md)
 
   완료된 전처리 데이터부터 학습하고, 새 데이터가 생기면 이어 학습하는 절차입니다.
+
+- [samples/prepared_training_data/](samples/prepared_training_data/)
+
+  실제 prepared V1Dataset에서 뽑은 작은 decoded sample입니다. 각 row는 instruction/prefix와 response/target 경계를 보여줍니다.
 
 - [docs/SFT_RL_CANDIDATE_PREP_2026-05-28.md](docs/SFT_RL_CANDIDATE_PREP_2026-05-28.md)
 

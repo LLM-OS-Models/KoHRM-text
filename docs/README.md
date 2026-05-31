@@ -12,6 +12,10 @@
 
   repo의 각 폴더와 핵심 코드 역할, 데이터 전처리부터 학습, checkpoint, HF 변환/업로드, 추론, SFT/LoRA까지 이어지는 실행 흐름을 정리합니다.
 
+- [TRAINING_TIME_AND_DATA_FLOW_2026-06-01.md](TRAINING_TIME_AND_DATA_FLOW_2026-06-01.md)
+
+  2026-06-01 epoch4 기준 진행률, 예상 완료 시간, upstream 46시간 reference와의 수치 비교, prepared V1Dataset이 학습으로 들어가는 흐름을 정리합니다.
+
 - [PT_SFT_PREPARE_DATA_CLARIFICATION_2026-05-31.md](PT_SFT_PREPARE_DATA_CLARIFICATION_2026-05-31.md)
 
   논문식 instruction pretraining, upstream SFT 경로, `prepare_sft_data.py`가 실제로 만드는 V1Dataset layout의 관계를 명확히 정리합니다.
@@ -37,6 +41,10 @@
 - [STAGED_TRAINING_RUNBOOK_2026-05-23.md](STAGED_TRAINING_RUNBOOK_2026-05-23.md)
 
   준비된 데이터부터 학습하고, 새 데이터가 생기면 이어 학습하는 운영 절차입니다.
+
+- [../samples/prepared_training_data/](../samples/prepared_training_data/)
+
+  실제 prepared V1Dataset에서 뽑은 작은 decoded sample입니다. instruction/prefix와 response/target 경계를 확인할 수 있습니다.
 
 - [SFT_RL_CANDIDATE_PREP_2026-05-28.md](SFT_RL_CANDIDATE_PREP_2026-05-28.md)
 

@@ -1,0 +1,82 @@
+[
+  {
+    "name": "stage1_fastcap",
+    "path": "samples/prepared_training_data/stage1_fastcap.jsonl",
+    "source_dataset_dir": "/home/work/.data/hrm_text_prepared/koterm_hrm_cleaned_fastcap_stage1_v1",
+    "samples": 10,
+    "source_samples": 57700142,
+    "source_total_tokens": 14554291763,
+    "max_seq_len_metadata": 4097,
+    "vocab_size": 131072
+  },
+  {
+    "name": "stage2_full_nocap",
+    "path": "samples/prepared_training_data/stage2_full_nocap.jsonl",
+    "source_dataset_dir": "/home/work/.data/hrm_text_prepared/koterm_hrm_cleaned_full_nocap_v1",
+    "samples": 10,
+    "source_samples": 57700142,
+    "source_total_tokens": 14553653061,
+    "max_seq_len_metadata": 4097,
+    "vocab_size": 131072
+  },
+  {
+    "name": "stage3_terminal",
+    "path": "samples/prepared_training_data/stage3_terminal.jsonl",
+    "source_dataset_dir": "/home/work/.data/hrm_text_prepared/local_terminal_conversations_ctx9k_resp6k_v1",
+    "samples": 10,
+    "source_samples": 2739207,
+    "source_total_tokens": 9386532467,
+    "max_seq_len_metadata": 4097,
+    "vocab_size": 131072
+  },
+  {
+    "name": "stage4_korean_tool_finance",
+    "path": "samples/prepared_training_data/stage4_korean_tool_finance.jsonl",
+    "source_dataset_dir": "/home/work/.data/hrm_text_prepared/koterm_korean_tool_finance_mix_v1",
+    "samples": 10,
+    "source_samples": 4501576,
+    "source_total_tokens": 3020504008,
+    "max_seq_len_metadata": 4097,
+    "vocab_size": 131072
+  },
+  {
+    "name": "sft_korean_legal",
+    "path": "samples/prepared_training_data/sft_korean_legal.jsonl",
+    "source_dataset_dir": "/home/work/.data/hrm_text_prepared/sft_korean_legal_v1",
+    "samples": 10,
+    "source_samples": 183080,
+    "source_total_tokens": 83144929,
+    "max_seq_len_metadata": 4097,
+    "vocab_size": 131072
+  },
+  {
+    "name": "sft_bcai_finance",
+    "path": "samples/prepared_training_data/sft_bcai_finance.jsonl",
+    "source_dataset_dir": "/home/work/.data/hrm_text_prepared/sft_bcai_finance_kor_v1",
+    "samples": 10,
+    "source_samples": 1862502,
+    "source_total_tokens": 857699372,
+    "max_seq_len_metadata": 4097,
+    "vocab_size": 131072
+  },
+  {
+    "name": "sft_toolbench",
+    "path": "samples/prepared_training_data/sft_toolbench.jsonl",
+    "source_dataset_dir": "/home/work/.data/hrm_text_prepared/sft_toolbench_v1",
+    "samples": 10,
+    "source_samples": 64137,
+    "source_total_tokens": 126961441,
+    "max_seq_len_metadata": 4097,
+    "vocab_size": 131072
+  },
+  {
+    "name": "sft_swe_glm_mix",
+    "path": "samples/prepared_training_data/sft_swe_glm_mix.jsonl",
+    "source_dataset_dir": "/home/work/.data/hrm_text_prepared/sft_swe_glm_mix_v1",
+    "samples": 10,
+    "source_samples": 109889,
+    "source_total_tokens": 251170780,
+    "max_seq_len_metadata": 4097,
+    "vocab_size": 131072
+  }
+]

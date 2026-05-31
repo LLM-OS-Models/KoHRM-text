@@ -291,6 +291,10 @@ token-based batch packing sampler입니다. 샘플 길이가 서로 다르기 �
 
   prepared dataset을 사람이 읽을 수 있게 몇 개 decode해 확인합니다. prompt/response 경계가 깨졌는지 볼 때 중요합니다.
 
+- `scripts/export_prepared_training_samples.py`
+
+  실제 production prepared V1Dataset에서 작은 decoded JSONL sample을 repo의 `samples/prepared_training_data/`로 내보냅니다. 전체 `tokens.npy`를 복사하지 않고 instruction/response 텍스트 일부와 원래 token length만 기록합니다.
+
 - `scripts/audit_data_status.py`
 
   데이터 폴더별 용량, row 수, metadata, 샘플을 요약합니다. 사용자가 “뭐가 몇 GB/몇 토큰인지” 물을 때 근거를 만드는 스크립트입니다.
