@@ -26,6 +26,9 @@ DATASETS = [
     "kohrm_sft_comp_agent_reasoning_25m_v1",
     "kohrm_sft_comp_korean_legal_50m_v1",
     "kohrm_sft_comp_finance_50m_v1",
+    "kohrm_sft_text2sql_core_clean_v1",
+    "kohrm_sft_text2sql_duckdb_v1",
+    "kohrm_sft_text2sql_core_clean_duckdb_v1",
 ]
 
 
@@ -105,4 +108,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

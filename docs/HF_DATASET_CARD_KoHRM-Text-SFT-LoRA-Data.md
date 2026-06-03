@@ -88,6 +88,7 @@ Start with a small LoRA run, not full SFT:
 2. kohrm_sft_korean_domain_core_v1 if Korean legal/finance answers are weak
 3. kohrm_sft_terminal_tool_core_v1 if terminal/tool behavior is weak
 4. kohrm_sft_behavior_core_v1 for a broader final behavior pass
+5. kohrm_sft_text2sql_core_clean_duckdb_v1 for English Text2SQL LoRA
 ```
 
 The current public KoHRM checkpoints are pretraining checkpoints. If they
@@ -128,6 +129,26 @@ kohrm_sft_behavior_core_v1
   size: about 1.2G
   purpose: broad behavior alignment mix across terminal/tool/code/reasoning
            and Korean legal/finance data.
+
+kohrm_sft_text2sql_core_clean_v1
+  tokens: 104,366,382
+  samples: 440,783
+  size: about 438M
+  purpose: English Text2SQL LoRA using popular, relatively clean schema/question/SQL
+           datasets without very large schema-heavy corpora.
+
+kohrm_sft_text2sql_duckdb_v1
+  tokens: 10,680,836
+  samples: 24,498
+  size: about 54M
+  purpose: DuckDB-specific SQL, including PRAGMA and practical database tasks.
+
+kohrm_sft_text2sql_core_clean_duckdb_v1
+  tokens: 115,047,218
+  samples: 465,281
+  size: about 481M
+  purpose: recommended first Text2SQL LoRA mix combining clean English Text2SQL
+           and DuckDB-specific examples.
 ```
 
 ### Component Subsets
@@ -199,6 +220,12 @@ GLM reasoning:
 
 BCAI Finance Kor:
   https://huggingface.co/datasets/BCCard/BCAI-Finance-Kor-1862K
+
+Text2SQL:
+  https://huggingface.co/datasets/gretelai/synthetic_text_to_sql
+  https://huggingface.co/datasets/b-mc2/sql-create-context
+  https://huggingface.co/datasets/Clinton/Text-to-sql-v1
+  https://huggingface.co/datasets/motherduckdb/duckdb-text2sql-25k
 
 extra reasoning/agent text subsets:
   https://huggingface.co/datasets/angrygiraffe/claude-opus-4.6-4.7-reasoning-8.7k
