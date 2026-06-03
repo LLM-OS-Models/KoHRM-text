@@ -60,6 +60,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--readme", type=Path, default=DEFAULT_README)
     ap.add_argument("--env-file", type=Path, default=Path("/home/work/.projects/LLM-OS-Models/Terminal/.env"))
     ap.add_argument("--only", nargs="*", default=None, help="Upload only selected dataset folder names.")
+    ap.add_argument("--no-readme", action="store_true", help="Do not upload the dataset card before folders.")
     ap.add_argument("--skip-existing", action="store_true", help="Reserved for future manifest checks.")
     return ap.parse_args()
 
@@ -76,7 +77,7 @@ def main() -> None:
     api = HfApi(token=token)
     create_repo(args.repo_id, repo_type="dataset", token=token, exist_ok=True)
 
-    if args.readme.exists():
+    if args.readme.exists() and not args.no_readme:
         print(f"[upload] README -> {args.repo_id}/README.md", flush=True)
         api.upload_file(
             path_or_fileobj=str(args.readme),
