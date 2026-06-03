@@ -186,6 +186,10 @@ pass 4: data 1 진행 중, data 2/3/4 자동 이어가기 예정
 
   SFT/LoRA/RL 후보 데이터, 전처리 산출물, 사용 순서를 정리했습니다.
 
+- [docs/TEXT2SQL_LORA_DATA_GUIDE_2026-06-03.md](docs/TEXT2SQL_LORA_DATA_GUIDE_2026-06-03.md)
+
+  영어 Text2SQL LoRA 후보, 인기순 데이터셋, 전처리 스크립트, DuckDB/SynSQL/NSText2SQL 사용 정책, 실행 명령을 정리했습니다.
+
 - [docs/POST_TRAINING_HRM_TEXT_GUIDE_2026-05-30.md](docs/POST_TRAINING_HRM_TEXT_GUIDE_2026-05-30.md)
 
   HRM-Text/KoHRM 구조에서 SFT, LoRA, RL을 적용할 때 지켜야 할 포맷, 추론 전제, 주의사항입니다.
