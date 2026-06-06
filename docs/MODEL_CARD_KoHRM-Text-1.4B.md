@@ -29,7 +29,7 @@ This is **not** a continued finetune of `sapientinc/HRM-Text-1B`. It uses a new 
 
 ### Current Status
 
-This repository is a rolling **latest public model export**. Training is still in progress.
+This repository is the public KoHRM-Text 1.4B base / pre-SFT model family anchor. Terminal-specialized LoRA adapters and full-SFT checkpoints are published as separate Hugging Face repos that point back to this model through `base_model`.
 
 - Main repo: `LLM-OS-Models/KoHRM-Text-1.4B`
 - Current public files: `model.safetensors`, `config.json`, tokenizer files, and this `README.md`
@@ -40,7 +40,30 @@ This repository is a rolling **latest public model export**. Training is still i
 - HRM-Text paper: https://arxiv.org/html/2605.20613
 - Tokenizer repo: `LLM-OS-Models/HRM-Text-Ko-Terminal-Tokenizer-131K`
 
-The main branch is overwritten with the newest converted EMA `safetensors` export as training checkpoints are uploaded. To test the latest public weight, download `revision="main"`.
+The main branch is the base model export. For terminal next-action use, prefer the fine-tuned checkpoints listed below rather than the base checkpoint directly.
+
+### Terminal Fine-Tuning Lineage
+
+The base model itself is weak on TB2-lite terminal next-action JSON without task-specific fine-tuning. The useful terminal behavior comes from adapters and full SFT on top of this base.
+
+| Model / Adapter | Relation | TB2-lite Score | Cmd F1 | Precision | Recall | First Cmd | Valid JSON |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `KoHRM-Text-1.4B-stage4d direct` | base/direct eval | 11.48 | 0.1148 | 0.1995 | 0.0961 | 5.9% | 38.9% |
+| `KoHRM-Text-1.4B-stage4d + terminal-tool-core-r64 LoRA` | PEFT adapter | 29.11 | 0.2911 | 0.3988 | 0.2768 | 22.1% | 63.4% |
+| `LLM-OS-Models/KoHRM-Text-1.4B-FullSFT-Top2-Terminal-Tool-Merge-Epoch1` | full fine-tune | 31.59 | 0.3159 | 0.3859 | 0.3415 | 24.8% | 73.3% |
+| `LLM-OS-Models/KoHRM-Text-1.4B-FullSFT-LFM25-Terminal-ToolBench-Epoch1` | full fine-tune | 38.56 | 0.3856 | 0.4262 | 0.4341 | 37.0% | 55.1% |
+| `LLM-OS-Models/KoHRM-Text-1.4B-FullSFT-LFM25-Terminal-ToolBench-Epoch2` | full fine-tune | 45.90 | 0.4590 | 0.5031 | 0.5098 | 44.9% | 68.3% |
+| `LLM-OS-Models/KoHRM-Text-1.4B-FullSFT-LFM25-Terminal-ToolBench-Epoch3` | full fine-tune | 43.57 | 0.4357 | 0.4703 | 0.5003 | 45.5% | 61.7% |
+
+`Score = 100 * avg_command_f1` on the corrected 303-step TB2-lite full replay set.
+
+The current best KoHRM terminal checkpoint is:
+
+https://huggingface.co/LLM-OS-Models/KoHRM-Text-1.4B-FullSFT-LFM25-Terminal-ToolBench-Epoch2
+
+Epoch2 remains the current best KoHRM terminal checkpoint. Epoch3 was evaluated as a continuation from Epoch2 and scored `43.57`, `-2.33` versus Epoch2. Epoch3 slightly improved First Cmd to `45.5%`, but Cmd F1, precision, recall, and Valid JSON all regressed, so Epoch2 is kept as the representative terminal checkpoint.
+
+Strong Epoch2 areas are `data_querying` (`0.6881` F1), `data_science` (`0.4901`), `debugging` (`0.4857`), `math` (`0.4845`), `software_engineering` (`0.4770`), and `file_operations` (`0.4710`). Remaining weak areas are `swe` (`0.3590`), `data_processing` (`0.4017`), `dependency_management` (`0.4025`), `security` (`0.4220`), and `model_training` (`0.4283`). The main remaining gap to the LFM2.5 top checkpoints is first-action accuracy and late-step command coverage.
 
 ### Training Method At A Glance
 
