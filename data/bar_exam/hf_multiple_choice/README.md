@@ -17,7 +17,104 @@ source_datasets:
 
 # Korean Bar Exam Multiple-Choice Questions and Answers (MOJ)
 
-This dataset contains question-level rows extracted from official Korean Ministry of Justice 변호사시험 source files.
+대한민국 법무부가 공개한 변호사시험 선택형(다지선다) 기출문제와 공식 정답을 문항 단위로 정리한 데이터셋입니다.
+
+이 데이터셋은 해설 데이터가 아니라 **문제 -> 정답 번호** 학습/평가에 맞춰져 있습니다.
+
+## SFT에 바로 쓸 파일
+
+SFT에 가장 바로 쓰기 좋은 파일은 다음입니다.
+
+```text
+data/questions.csv
+```
+
+핵심 컬럼:
+
+- `question_text`: 문제 원문과 선택지를 포함한 전체 텍스트
+- `stem`: 문제 본문
+- `choices_json`: 선택지 배열(JSON 문자열)
+- `answer`: 공식 정답 번호
+- `round`, `year`, `subject`, `question_no`: 회차, 연도, 과목, 문항 번호
+- `source_article_url`, `source_file_url`, `source_license`: 출처와 라이선스 추적 정보
+
+`data/answers.csv`는 정답표 검증용입니다. 단독 SFT 입력으로 쓰기보다는 `questions.csv`와 대조하거나 평가셋을 만들 때 사용하세요.
+
+`data/documents.csv`는 원본 문서 단위 메타데이터입니다.
+
+## SFT 포맷 예시
+
+가장 단순한 SFT 목적은 “변호사시험 선택형 문제를 보고 정답 번호만 답하는 모델”입니다.
+
+예시 메시지 포맷:
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "다음 변호사시험 선택형 문제의 정답 번호만 고르시오.\n\n[문제]\n..."
+    },
+    {
+      "role": "assistant",
+      "content": "정답: 3"
+    }
+  ]
+}
+```
+
+Python 변환 예시:
+
+```python
+from datasets import load_dataset
+
+ds = load_dataset(
+    "gyung/korean-bar-exam-moj-multiple-choice",
+    data_files="data/questions.csv",
+    split="train",
+)
+
+def to_sft(row):
+    user = (
+        "다음 변호사시험 선택형 문제의 정답 번호만 고르시오.\n\n"
+        f"[회차] 제{row['round']}회\n"
+        f"[과목] {row['subject']}\n"
+        f"[문항]\n{row['question_text']}"
+    )
+    return {
+        "messages": [
+            {"role": "user", "content": user},
+            {"role": "assistant", "content": f"정답: {row['answer']}"},
+        ]
+    }
+
+sft_ds = ds.map(to_sft, remove_columns=ds.column_names)
+```
+
+정답 번호만 학습시키고 싶으면 assistant 응답을 `row["answer"]`만 남겨도 됩니다.
+
+```python
+{"role": "assistant", "content": row["answer"]}
+```
+
+## 평가용 사용
+
+모델 평가에서는 `question_text`를 프롬프트로 넣고 모델이 낸 번호를 `answer`와 비교하면 됩니다.
+
+권장 평가 프롬프트:
+
+```text
+다음 변호사시험 선택형 문제의 정답 번호만 출력하시오. 다른 말은 쓰지 마시오.
+
+{question_text}
+```
+
+## 데이터 한계
+
+- 공식 해설은 포함되어 있지 않습니다.
+- `answer`는 공식 정답 번호입니다.
+- 일부 문항은 원문 HWP/HWPX의 서식 때문에 `choices_json` 선택지 분리가 완벽하지 않을 수 있습니다. 그래도 모든 행에는 `question_text`와 `answer`가 들어 있습니다.
+- QA 기준으로 문제 2,250행과 정답 2,250행이 일치하며, 회차/과목별 문항 수 불일치는 없습니다.
 
 ## Contents
 
