@@ -1,0 +1,29 @@
+{
+  "generated_utc": "2026-06-21T17:14:34Z",
+  "manual_dir": "/home/work/.data/harness1/bar_exam_manual_work_20260621",
+  "context_dir": "/home/work/.data/harness1/bar_exam_model_contexts_20260621/round15_rag_contexts_v3_model_ready",
+  "output_dir": "HRM-Text/data/bar_exam/round150_rag_contexts_v2_20260621",
+  "rows": 150,
+  "subjects": {
+    "공법": 40,
+    "민사법": 70,
+    "형사법": 40
+  },
+  "answer_free_files": [
+    "questions/model_inputs.jsonl",
+    "inference/openbook_chat_prompts.jsonl",
+    "inference/closedbook_chat_prompts.jsonl",
+    "eval/blind_manual_eval_tasks.jsonl",
+    "contexts/*.md"
+  ],
+  "label_files": [
+    "targets/retrieval_targets.jsonl",
+    "eval/manual_eval_tasks.jsonl",
+    "review/manual_casebook.md"
+  ],
+  "sft_files": [
+    "sft/bar_exam_context_answer_sft.jsonl",
+    "sft/bar_exam_fts_agent_sft.jsonl"
+  ],
+  "quality_report": "reports/workset_quality_report.json"
+}

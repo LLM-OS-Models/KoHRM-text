@@ -1,0 +1,7 @@
+{
+  "model_ready_jsonl": "/home/work/.data/harness1/bar_exam_manual_work_20260621/model_ready_questions.jsonl",
+  "rows": 150,
+  "max_docs": 30,
+  "max_snippet_chars": 1800,
+  "answer_labels_included": false
+}

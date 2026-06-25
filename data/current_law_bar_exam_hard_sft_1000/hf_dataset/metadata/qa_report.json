@@ -1,0 +1,51 @@
+{
+  "target_count": 1000,
+  "row_count": 1000,
+  "attempts": 1034,
+  "subject_counts": {
+    "공법": 270,
+    "민사법": 460,
+    "형사법": 270
+  },
+  "question_type_counts": {
+    "mixed_statute_precedent_case": 360,
+    "case_multi_statement": 280,
+    "multi_statement": 220,
+    "negative_statement": 140
+  },
+  "law_counts_top20": {
+    "상법": 155,
+    "형사소송법": 135,
+    "채무자 회생 및 파산에 관한 법률": 111,
+    "민법": 105,
+    "국회법": 91,
+    "형법": 74,
+    "민사소송법": 53,
+    "행정절차법": 45,
+    "헌법재판소법": 32,
+    "행정심판법": 30,
+    "아동ㆍ청소년의 성보호에 관한 법률": 29,
+    "대한민국헌법": 25,
+    "성폭력범죄의 처벌 등에 관한 특례법": 24,
+    "행정소송법": 21,
+    "가족관계의 등록 등에 관한 법률": 19,
+    "행정기본법": 19,
+    "부동산등기법": 17,
+    "국가배상법": 7,
+    "형의 실효 등에 관한 법률": 4,
+    "특정범죄 가중처벌 등에 관한 법률": 2
+  },
+  "round15_similarity_threshold": 0.72,
+  "round15_max_similarity": 0.2459,
+  "rejected_round15_similarity": 0,
+  "duplicate_fingerprints": 0,
+  "difficulty_note": "Harder v2: case-framed and ㄱㄴㄷㄹ multi-statement questions replace direct lookup questions.",
+  "precedent_pool_count": 5000,
+  "as_of": "2026-06-13",
+  "law_doc_count": 21,
+  "article_count": 5247,
+  "weighted_article_count": 26648,
+  "round15_reference_count": 150,
+  "repo_id": "gyung/korean-bar-exam-hard-current-law-precedent-sft-1000",
+  "bar_questions_path": "data/bar_exam/hf_multiple_choice/data/questions.csv"
+}

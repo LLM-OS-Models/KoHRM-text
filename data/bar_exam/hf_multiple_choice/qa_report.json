@@ -1,0 +1,13 @@
+{
+  "attachments": 66,
+  "documents_by_status": {
+    "ok": 66
+  },
+  "question_rows": 2250,
+  "answer_rows": 2250,
+  "question_quality_counts": {
+    "parsed_with_answer": 2244,
+    "needs_review_choices": 6
+  },
+  "multiple_choice_count_issues": []
+}

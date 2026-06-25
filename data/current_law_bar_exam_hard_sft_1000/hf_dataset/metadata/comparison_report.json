@@ -1,0 +1,29 @@
+{
+  "real_bar_exam_rounds_14_15": {
+    "n": 300,
+    "q_len_mean": 741.7,
+    "q_len_median": 724.5,
+    "q_len_p75": 868,
+    "q_len_p90": 994,
+    "stem_len_mean": 400.5,
+    "case_pct": 46.0,
+    "combo_pct": 50.0,
+    "precedent_pct": 98.3,
+    "all_correct_pct": 29.7,
+    "direct_lookup_pct": 0.0
+  },
+  "generated_hard_dataset": {
+    "n": 1000,
+    "q_len_mean": 625.4,
+    "q_len_median": 603.0,
+    "q_len_p75": 723,
+    "q_len_p90": 814,
+    "stem_len_mean": 536.0,
+    "case_pct": 64.0,
+    "combo_pct": 86.0,
+    "precedent_pct": 72.0,
+    "all_correct_pct": 86.2,
+    "direct_lookup_pct": 0.0
+  },
+  "interpretation": "Generated hard dataset is shorter on average than real rounds 14-15, but has higher case/combo density, explicit mixed statute-precedent items, no direct lookup questions, and round15 max similarity 0.2459."
+}

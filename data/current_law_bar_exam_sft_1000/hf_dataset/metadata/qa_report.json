@@ -1,0 +1,49 @@
+{
+  "target_count": 1000,
+  "row_count": 1000,
+  "attempts": 1416,
+  "subject_counts": {
+    "공법": 270,
+    "민사법": 460,
+    "형사법": 270
+  },
+  "question_type_counts": {
+    "reference_select": 371,
+    "negative_statement": 207,
+    "article_match": 373,
+    "blank_term": 49
+  },
+  "law_counts_top20": {
+    "민법": 218,
+    "상법": 153,
+    "형사소송법": 151,
+    "형법": 100,
+    "대한민국헌법": 68,
+    "국회법": 58,
+    "민사소송법": 46,
+    "채무자 회생 및 파산에 관한 법률": 37,
+    "행정절차법": 36,
+    "헌법재판소법": 34,
+    "행정기본법": 29,
+    "행정심판법": 23,
+    "행정소송법": 18,
+    "성폭력범죄의 처벌 등에 관한 특례법": 10,
+    "아동ㆍ청소년의 성보호에 관한 법률": 7,
+    "국가배상법": 4,
+    "부동산등기법": 4,
+    "가족관계의 등록 등에 관한 법률": 2,
+    "특정범죄 가중처벌 등에 관한 법률": 2
+  },
+  "round15_similarity_threshold": 0.72,
+  "round15_max_similarity": 0.2982,
+  "rejected_round15_similarity": 0,
+  "rejected_duplicate_fingerprint": 0,
+  "duplicate_fingerprints": 0,
+  "as_of": "2026-06-13",
+  "law_doc_count": 21,
+  "article_count": 5247,
+  "weighted_article_count": 26648,
+  "round15_reference_count": 150,
+  "repo_id": "gyung/korean-current-law-bar-exam-sft-1000",
+  "bar_questions_path": "data/bar_exam/hf_multiple_choice/data/questions.csv"
+}

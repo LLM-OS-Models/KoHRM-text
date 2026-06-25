@@ -1,0 +1,23 @@
+HTTP/1.0 307 Temporary Redirect
+Location: https://www.moj.go.kr/bbs/moj/151/489450/download.do
+Set-Cookie: TMOSHCooKie=e//egLUs0CIFsbtmvZ1nyYQ9jIfgQY4ggg4qGjnpYY+zHUP4GmvyCdH82diekUNaz0veN62++lbz51MsSjyaBxDWrFQvjAyVAAAAAQ==
+Cache-Control: no-cache
+Connection: close
+Content-Length: 0
+
+HTTP/1.0 200 OK
+Expires: -1;
+Content-Transfer-Encoding: binary;
+Cache-Control: no-cache
+Cache-Control: no-store
+X-Powered-By: Server
+P3P: CP='CAO PSA CONi OTR OUR DEM ONL'
+Server: Server
+Pragma: no-cache;
+Content-Disposition: attachment; filename=%EB%B3%80%ED%98%B8%EC%82%AC%EC%8B%9C%ED%97%98%20%EC%A0%95%EB%8B%B5%EA%B0%80%EC%95%88%28%EA%B3%B5%EB%B2%95%20%EC%84%A0%ED%83%9D%ED%98%95%29.hwp;
+Date: Fri, 12 Jun 2026 23:13:55 GMT
+khan.tid: 19ebe1d0ced-25fca98587790e088aa1
+Content-Type: application/x-msdownload;charset=UTF-8
+Content-Length: 75264
+Set-Cookie: clientid=050074353613; Path=/
+
