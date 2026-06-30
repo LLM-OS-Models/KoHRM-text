@@ -118,7 +118,7 @@ def main() -> None:
     line(draw, (104, 572, 1496, 572), "#E1E8F0", 1)
 
     rows = [
-        ("1", "이번 실험", 150, "v5 RAG + Antigravity Gemini 3.1 Pro", "#0F766E"),
+        ("1", "이번 실험", 150, "v5 RAG + Gemini 3.1 Pro", "#0F766E"),
         ("1", "슈퍼로이어", 150, "언론 보도 기준", "#2563EB"),
         ("3", "인간 수석", 144, "언론 보도 360/375 환산", "#D97706"),
         ("4", "엘박스 AI", 141, "언론 보도 기준", "#7C3AED"),
@@ -135,7 +135,9 @@ def main() -> None:
     bar_x = 392
     bar_w = 650
     score_x = 1200
-    note_x = 1270
+    note_box_x = 1250
+    note_box_w = 226
+    note_x = note_box_x + 14
 
     for i, (rank, name, value, note, color) in enumerate(rows):
         y = row_top + i * (row_h + row_gap)
@@ -152,6 +154,7 @@ def main() -> None:
         rounded(draw, (bar_x, mid - 11, bar_x + fill_w, mid + 11), 11, color)
 
         text_rm(draw, score_x, mid + 1, f"{value} / 150", score, color if i < 4 else ink)
+        rounded(draw, (note_box_x, mid - 18, note_box_x + note_box_w, mid + 18), 6, "#F1F5F9")
         text_lm(draw, note_x, mid + 1, note, small, muted)
 
         if i < len(rows) - 1:

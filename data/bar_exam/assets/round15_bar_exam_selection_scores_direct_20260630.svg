@@ -61,46 +61,53 @@
     <text x="178" y="638" class="teal" font-size="24" font-weight="700">이번 실험</text>
     <rect x="392" y="617" width="650" height="22" rx="11" class="track"/><rect x="392" y="617" width="650" height="22" rx="11" fill="#0F766E"/>
     <text x="1200" y="641" class="teal" font-size="31" font-weight="800" text-anchor="end">150 / 150</text>
-    <text x="1270" y="635" class="muted" font-size="16">v5 RAG + Antigravity Gemini 3.1 Pro</text>
+    <rect x="1250" y="610" width="226" height="36" rx="6" fill="#F1F5F9"/>
+    <text x="1264" y="635" class="muted" font-size="16">v5 RAG + Gemini 3.1 Pro</text>
 
     <rect x="126" y="673" width="38" height="38" rx="7" fill="#2563EB"/><text x="145" y="700" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">1</text>
     <text x="178" y="702" class="blue" font-size="24" font-weight="700">슈퍼로이어</text>
     <rect x="392" y="681" width="650" height="22" rx="11" class="track"/><rect x="392" y="681" width="650" height="22" rx="11" fill="#2563EB"/>
     <text x="1200" y="705" class="blue" font-size="31" font-weight="800" text-anchor="end">150 / 150</text>
-    <text x="1270" y="699" class="muted" font-size="16">언론 보도 기준</text>
+    <rect x="1250" y="674" width="226" height="36" rx="6" fill="#F1F5F9"/>
+    <text x="1264" y="699" class="muted" font-size="16">언론 보도 기준</text>
 
     <rect x="104" y="728" width="1392" height="56" rx="8" class="row"/>
     <rect x="126" y="737" width="38" height="38" rx="7" fill="#D97706"/><text x="145" y="764" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">3</text>
     <text x="178" y="766" class="amber" font-size="24" font-weight="700">인간 수석</text>
     <rect x="392" y="745" width="650" height="22" rx="11" class="track"/><rect x="392" y="745" width="624" height="22" rx="11" fill="#D97706"/>
     <text x="1200" y="769" class="amber" font-size="31" font-weight="800" text-anchor="end">144 / 150</text>
-    <text x="1270" y="763" class="muted" font-size="16">언론 보도 360/375 환산</text>
+    <rect x="1250" y="738" width="226" height="36" rx="6" fill="#F1F5F9"/>
+    <text x="1264" y="763" class="muted" font-size="16">언론 보도 360/375 환산</text>
 
     <rect x="126" y="801" width="38" height="38" rx="7" fill="#7C3AED"/><text x="145" y="828" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">4</text>
     <text x="178" y="830" class="purple" font-size="24" font-weight="700">엘박스 AI</text>
     <rect x="392" y="809" width="650" height="22" rx="11" class="track"/><rect x="392" y="809" width="611" height="22" rx="11" fill="#7C3AED"/>
     <text x="1200" y="833" class="purple" font-size="31" font-weight="800" text-anchor="end">141 / 150</text>
-    <text x="1270" y="827" class="muted" font-size="16">언론 보도 기준</text>
+    <rect x="1250" y="802" width="226" height="36" rx="6" fill="#F1F5F9"/>
+    <text x="1264" y="827" class="muted" font-size="16">언론 보도 기준</text>
 
     <rect x="104" y="856" width="1392" height="56" rx="8" class="row"/>
     <rect x="126" y="865" width="38" height="38" rx="7" fill="#64748B"/><text x="145" y="892" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">5</text>
     <text x="178" y="894" class="ink" font-size="24" font-weight="700">Gemini 2.5 Pro</text>
     <rect x="392" y="873" width="650" height="22" rx="11" class="track"/><rect x="392" y="873" width="477" height="22" rx="11" fill="#64748B"/>
     <text x="1200" y="897" class="ink" font-size="31" font-weight="800" text-anchor="end">110 / 150</text>
-    <text x="1270" y="891" class="muted" font-size="16">엘박스 발표 이미지 기준</text>
+    <rect x="1250" y="866" width="226" height="36" rx="6" fill="#F1F5F9"/>
+    <text x="1264" y="891" class="muted" font-size="16">엘박스 발표 이미지 기준</text>
 
     <rect x="126" y="929" width="38" height="38" rx="7" fill="#64748B"/><text x="145" y="956" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">6</text>
     <text x="178" y="958" class="ink" font-size="24" font-weight="700">Claude Opus 4.6</text>
     <rect x="392" y="937" width="650" height="22" rx="11" class="track"/><rect x="392" y="937" width="425" height="22" rx="11" fill="#64748B"/>
     <text x="1200" y="961" class="ink" font-size="31" font-weight="800" text-anchor="end">98 / 150</text>
-    <text x="1270" y="955" class="muted" font-size="16">엘박스 발표 이미지 기준</text>
+    <rect x="1250" y="930" width="226" height="36" rx="6" fill="#F1F5F9"/>
+    <text x="1264" y="955" class="muted" font-size="16">엘박스 발표 이미지 기준</text>
 
     <rect x="104" y="984" width="1392" height="56" rx="8" class="row"/>
     <rect x="126" y="993" width="38" height="38" rx="7" fill="#64748B"/><text x="145" y="1020" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">7</text>
     <text x="178" y="1022" class="ink" font-size="24" font-weight="700">GPT-5.4</text>
     <rect x="392" y="1001" width="650" height="22" rx="11" class="track"/><rect x="392" y="1001" width="407" height="22" rx="11" fill="#64748B"/>
     <text x="1200" y="1025" class="ink" font-size="31" font-weight="800" text-anchor="end">94 / 150</text>
-    <text x="1270" y="1019" class="muted" font-size="16">엘박스 발표 이미지 기준</text>
+    <rect x="1250" y="994" width="226" height="36" rx="6" fill="#F1F5F9"/>
+    <text x="1264" y="1019" class="muted" font-size="16">엘박스 발표 이미지 기준</text>
   </g>
 
   <text x="80" y="1100" class="ink" font-size="17" font-weight="700">출처 구분</text>
