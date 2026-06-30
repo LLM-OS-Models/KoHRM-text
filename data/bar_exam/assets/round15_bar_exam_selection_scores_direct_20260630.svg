@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <rect width="1600" height="1200" fill="#F6F8FB"/>
+  <style>
+    text { font-family: NanumSquare, NanumGothic, Arial, sans-serif; }
+    .ink { fill: #0F172A; }
+    .soft { fill: #475569; }
+    .muted { fill: #718096; }
+    .teal { fill: #0F766E; }
+    .blue { fill: #2563EB; }
+    .amber { fill: #D97706; }
+    .purple { fill: #7C3AED; }
+    .slate { fill: #64748B; }
+    .card { fill: #FFFFFF; stroke: #DDE5EF; stroke-width: 1; }
+    .track { fill: #E6ECF3; }
+    .row { fill: #F8FAFC; }
+  </style>
+
+  <text x="74" y="78" class="teal" font-size="25" font-weight="700">제15회 변호사시험 선택형</text>
+  <text x="74" y="161" class="ink" font-size="56" font-weight="800">150문항 성적 비교</text>
+  <text x="76" y="198" class="soft" font-size="21">정답 수 기준 · 공식 정답 대조 결과</text>
+
+  <rect x="620" y="58" width="906" height="192" rx="10" class="card"/>
+  <rect x="620" y="58" width="10" height="192" rx="5" fill="#0F766E"/>
+  <line x1="948" y1="88" x2="948" y2="220" stroke="#D8E1EA" stroke-width="1"/>
+  <text x="674" y="131" class="teal" font-size="33" font-weight="800">이번 실험</text>
+  <text x="674" y="177" class="soft" font-size="21">정답 번호 없이 v5 법률 근거 컨텍스트만 사용</text>
+  <text x="1462" y="171" class="teal" font-size="80" font-weight="800" text-anchor="end">150 / 150</text>
+  <text x="1462" y="217" class="teal" font-size="22" font-weight="700" text-anchor="end">정답률 100%</text>
+
+  <g>
+    <rect x="74" y="286" width="468" height="116" rx="10" class="card"/>
+    <circle cx="131" cy="344" r="31" fill="#EEF7F5"/>
+    <text x="131" y="359" class="teal" font-size="36" font-weight="800" text-anchor="middle">§</text>
+    <text x="186" y="358" class="ink" font-size="26" font-weight="700">공법</text>
+    <text x="508" y="359" class="teal" font-size="36" font-weight="800" text-anchor="end">40 / 40</text>
+  </g>
+  <g>
+    <rect x="576" y="286" width="468" height="116" rx="10" class="card"/>
+    <circle cx="633" cy="344" r="31" fill="#EEF7F5"/>
+    <text x="633" y="359" class="teal" font-size="36" font-weight="800" text-anchor="middle">§</text>
+    <text x="688" y="358" class="ink" font-size="26" font-weight="700">민사법</text>
+    <text x="1010" y="359" class="teal" font-size="36" font-weight="800" text-anchor="end">70 / 70</text>
+  </g>
+  <g>
+    <rect x="1078" y="286" width="468" height="116" rx="10" class="card"/>
+    <circle cx="1135" cy="344" r="31" fill="#EEF7F5"/>
+    <text x="1135" y="359" class="teal" font-size="36" font-weight="800" text-anchor="middle">§</text>
+    <text x="1190" y="358" class="ink" font-size="26" font-weight="700">형사법</text>
+    <text x="1512" y="359" class="teal" font-size="36" font-weight="800" text-anchor="end">40 / 40</text>
+  </g>
+
+  <rect x="74" y="438" width="1452" height="600" rx="10" class="card"/>
+  <text x="126" y="526" class="ink" font-size="33" font-weight="800">비교 점수</text>
+  <text x="126" y="550" class="muted" font-size="16">선택형 150문항 중 정답 수</text>
+  <text x="1390" y="542" class="soft" font-size="21" text-anchor="end">정답 수</text>
+  <line x1="104" y1="572" x2="1496" y2="572" stroke="#E1E8F0"/>
+
+  <g font-size="16">
+    <rect x="104" y="600" width="1392" height="56" rx="8" class="row"/>
+    <rect x="126" y="609" width="38" height="38" rx="7" fill="#0F766E"/><text x="145" y="636" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">1</text>
+    <text x="178" y="638" class="teal" font-size="24" font-weight="700">이번 실험</text>
+    <rect x="392" y="617" width="650" height="22" rx="11" class="track"/><rect x="392" y="617" width="650" height="22" rx="11" fill="#0F766E"/>
+    <text x="1200" y="641" class="teal" font-size="31" font-weight="800" text-anchor="end">150 / 150</text>
+    <text x="1270" y="635" class="muted" font-size="16">v5 RAG + Antigravity Gemini 3.1 Pro</text>
+
+    <rect x="126" y="673" width="38" height="38" rx="7" fill="#2563EB"/><text x="145" y="700" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">1</text>
+    <text x="178" y="702" class="blue" font-size="24" font-weight="700">슈퍼로이어</text>
+    <rect x="392" y="681" width="650" height="22" rx="11" class="track"/><rect x="392" y="681" width="650" height="22" rx="11" fill="#2563EB"/>
+    <text x="1200" y="705" class="blue" font-size="31" font-weight="800" text-anchor="end">150 / 150</text>
+    <text x="1270" y="699" class="muted" font-size="16">언론 보도 기준</text>
+
+    <rect x="104" y="728" width="1392" height="56" rx="8" class="row"/>
+    <rect x="126" y="737" width="38" height="38" rx="7" fill="#D97706"/><text x="145" y="764" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">3</text>
+    <text x="178" y="766" class="amber" font-size="24" font-weight="700">인간 수석</text>
+    <rect x="392" y="745" width="650" height="22" rx="11" class="track"/><rect x="392" y="745" width="624" height="22" rx="11" fill="#D97706"/>
+    <text x="1200" y="769" class="amber" font-size="31" font-weight="800" text-anchor="end">144 / 150</text>
+    <text x="1270" y="763" class="muted" font-size="16">언론 보도 360/375 환산</text>
+
+    <rect x="126" y="801" width="38" height="38" rx="7" fill="#7C3AED"/><text x="145" y="828" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">4</text>
+    <text x="178" y="830" class="purple" font-size="24" font-weight="700">엘박스 AI</text>
+    <rect x="392" y="809" width="650" height="22" rx="11" class="track"/><rect x="392" y="809" width="611" height="22" rx="11" fill="#7C3AED"/>
+    <text x="1200" y="833" class="purple" font-size="31" font-weight="800" text-anchor="end">141 / 150</text>
+    <text x="1270" y="827" class="muted" font-size="16">언론 보도 기준</text>
+
+    <rect x="104" y="856" width="1392" height="56" rx="8" class="row"/>
+    <rect x="126" y="865" width="38" height="38" rx="7" fill="#64748B"/><text x="145" y="892" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">5</text>
+    <text x="178" y="894" class="ink" font-size="24" font-weight="700">Gemini 2.5 Pro</text>
+    <rect x="392" y="873" width="650" height="22" rx="11" class="track"/><rect x="392" y="873" width="477" height="22" rx="11" fill="#64748B"/>
+    <text x="1200" y="897" class="ink" font-size="31" font-weight="800" text-anchor="end">110 / 150</text>
+    <text x="1270" y="891" class="muted" font-size="16">엘박스 발표 이미지 기준</text>
+
+    <rect x="126" y="929" width="38" height="38" rx="7" fill="#64748B"/><text x="145" y="956" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">6</text>
+    <text x="178" y="958" class="ink" font-size="24" font-weight="700">Claude Opus 4.6</text>
+    <rect x="392" y="937" width="650" height="22" rx="11" class="track"/><rect x="392" y="937" width="425" height="22" rx="11" fill="#64748B"/>
+    <text x="1200" y="961" class="ink" font-size="31" font-weight="800" text-anchor="end">98 / 150</text>
+    <text x="1270" y="955" class="muted" font-size="16">엘박스 발표 이미지 기준</text>
+
+    <rect x="104" y="984" width="1392" height="56" rx="8" class="row"/>
+    <rect x="126" y="993" width="38" height="38" rx="7" fill="#64748B"/><text x="145" y="1020" fill="#fff" font-size="20" font-weight="800" text-anchor="middle">7</text>
+    <text x="178" y="1022" class="ink" font-size="24" font-weight="700">GPT-5.4</text>
+    <rect x="392" y="1001" width="650" height="22" rx="11" class="track"/><rect x="392" y="1001" width="407" height="22" rx="11" fill="#64748B"/>
+    <text x="1200" y="1025" class="ink" font-size="31" font-weight="800" text-anchor="end">94 / 150</text>
+    <text x="1270" y="1019" class="muted" font-size="16">엘박스 발표 이미지 기준</text>
+  </g>
+
+  <text x="80" y="1100" class="ink" font-size="17" font-weight="700">출처 구분</text>
+  <text x="80" y="1128" class="muted" font-size="14">GPT-5.4 / Claude Opus 4.6 / Gemini 2.5 Pro 점수는 엘박스 발표 이미지 기준.</text>
+  <text x="80" y="1154" class="muted" font-size="14">엘박스 AI·슈퍼로이어·인간 수석은 언론 보도 기준. 인간 수석 144는 360/375를 문항당 2.5점으로 환산.</text>
+  <text x="1520" y="1154" class="muted" font-size="14" text-anchor="end">기준일: 2026.06.30</text>
+</svg>

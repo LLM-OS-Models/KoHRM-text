@@ -4,15 +4,23 @@
 
 ## LinkedIn 게시용 첨부 이미지
 
-![제15회 변호사시험 선택형 성적 비교](assets/round15_bar_exam_selection_scores_20260630.png)
+![제15회 변호사시험 선택형 성적 비교](assets/round15_bar_exam_selection_scores_linkedin_final_20260630.png)
 
 이미지 파일:
 
-- `assets/round15_bar_exam_selection_scores_20260630.png`
+- 최종 PNG: `assets/round15_bar_exam_selection_scores_linkedin_final_20260630.png`
+- 직접 작성 SVG: `assets/round15_bar_exam_selection_scores_direct_20260630.svg`
+- 이미지 생성기 시안: `assets/round15_bar_exam_selection_scores_imagegen_concept_20260630.png`
 
 생성 스크립트:
 
-- `scripts/create_round15_bar_exam_score_chart.py`
+- `scripts/create_round15_bar_exam_linkedin_final.py`
+
+검수 결과:
+
+- 최종 PNG: 사용 가능. 텍스트 겹침 없음, 점수 가림 없음, 기준일 2026.06.30 정상.
+- 직접 작성 SVG: 정확한 텍스트를 손으로 고정한 벡터 버전.
+- 이미지 생성기 시안: 디자인 참고용. 생성 이미지 특성상 날짜가 틀려 최종 업로드용으로 쓰지 않음.
 
 ## 인간 수석 144개 표현 기준
 
